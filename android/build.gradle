@@ -56,6 +56,11 @@ android {
     targetCompatibility JavaVersion.VERSION_1_8
   }
 
+  sourceSets {
+    main {
+      jniLibs.srcDirs = ['src/main/jniLibs']
+    }
+  }
 }
 
 repositories {
@@ -131,10 +136,12 @@ repositories {
 def kotlin_version = getExtOrDefault('kotlinVersion')
 
 dependencies {
-    //noinspection GradleDynamicVersion
+  //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-// From node_modules
+  // From node_modules
+  implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+  implementation "org.eclipse.keyple:keyple-util-java-lib:2.0.0"
 }
 
 if (isNewArchitectureEnabled()) {

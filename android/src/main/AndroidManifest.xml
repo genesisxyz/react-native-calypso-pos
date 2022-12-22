@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
           package="com.pos">
-
+  <uses-permission android:name="android.permission.CLOUDPOS_CONTACTLESS_CARD"/>
+  <uses-permission android:name="android.permission.CLOUDPOS_SMARTCARD"/>
+  <uses-permission android:name="android.permission.NFC" />
 </manifest>
