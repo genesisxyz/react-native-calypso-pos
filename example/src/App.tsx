@@ -1,18 +1,38 @@
 import * as React from 'react';
 
-import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'react-native-pos';
+import {
+  StyleSheet,
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
+import { useState } from 'react';
+import { PosPrinter } from 'react-native-pos';
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
 
-  React.useEffect(() => {
-    multiply(3, 7).then(setResult);
-  }, []);
+  const print = async () => {
+    setIsLoading(true);
+    const isOpen = await PosPrinter.open();
+    if (isOpen) {
+      PosPrinter.setGrey(6);
+      PosPrinter.setLineSpace(5);
+      PosPrinter.setBold(true);
+      PosPrinter.setAlgin(PosPrinter.Mode.ALGIN_MIDDLE);
+      PosPrinter.addString('Ciao Mondo');
+      PosPrinter.printString();
+      await PosPrinter.close();
+    }
+    setIsLoading(false);
+  };
 
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Pressable onPress={print} disabled={isLoading}>
+        {isLoading ? <ActivityIndicator /> : <Text>PRINT</Text>}
+      </Pressable>
     </View>
   );
 }
