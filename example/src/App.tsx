@@ -8,13 +8,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useState } from 'react';
-import { PosPrinter } from 'react-native-pos';
+import { PosPrinter, PosSam } from 'react-native-pos';
 
 export default function App() {
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPrint, setIsLoadingPrint] = useState(false);
+  const [isLoadingSam, setIsLoadingSam] = useState(false);
 
   const print = async () => {
-    setIsLoading(true);
+    setIsLoadingPrint(true);
     const isOpen = await PosPrinter.open();
     if (isOpen) {
       PosPrinter.setGrey(6);
@@ -25,13 +26,41 @@ export default function App() {
       PosPrinter.printString();
       await PosPrinter.close();
     }
-    setIsLoading(false);
+    setIsLoadingPrint(false);
+  };
+
+  const sam = async () => {
+    setIsLoadingSam(true);
+    const isOpen = await PosSam.open();
+    if (isOpen) {
+      const command = await PosSam.challenge();
+      console.warn(command.map((e) => (e & 0xff).toString(16)));
+      const res = await PosSam.transmit(command);
+      console.warn(res.map((e) => (e & 0xff).toString(16)));
+      await PosSam.close();
+    }
+    setIsLoadingSam(false);
   };
 
   return (
     <View style={styles.container}>
-      <Pressable onPress={print} disabled={isLoading}>
-        {isLoading ? <ActivityIndicator /> : <Text>PRINT</Text>}
+      <Pressable
+        style={styles.button}
+        onPress={print}
+        disabled={isLoadingPrint}
+      >
+        {isLoadingPrint ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.text}>PRINT</Text>
+        )}
+      </Pressable>
+      <Pressable style={styles.button} onPress={sam} disabled={isLoadingSam}>
+        {isLoadingSam ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.text}>Sam Challenge</Text>
+        )}
       </Pressable>
     </View>
   );
@@ -47,5 +76,13 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginVertical: 20,
+  },
+  button: {
+    marginBottom: 20,
+    backgroundColor: '#6200EE',
+    padding: 16,
+  },
+  text: {
+    color: '#fff',
   },
 });
