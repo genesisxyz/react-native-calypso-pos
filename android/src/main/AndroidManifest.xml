@@ -3,4 +3,5 @@
   <uses-permission android:name="android.permission.CLOUDPOS_CONTACTLESS_CARD"/>
   <uses-permission android:name="android.permission.CLOUDPOS_SMARTCARD"/>
   <uses-permission android:name="android.permission.NFC" />
+  <uses-permission android:name="android.permission.CLOUDPOS_PRINTER"/>
 </manifest>

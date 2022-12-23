@@ -1,17 +1,24 @@
 package com.pos
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Base64
 import com.cloudpos.DeviceException
 import com.cloudpos.POSTerminal
+import com.cloudpos.POSTerminal.DEVICE_NAME_PRINTER
 import com.cloudpos.printer.PrinterDevice
+import com.cloudpos.sdk.printer.html.PrinterHtmlListener
+import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
-import com.facebook.react.bridge.Promise
 import com.telpo.tps550.api.TelpoException
 import com.telpo.tps550.api.printer.UsbThermalPrinter
+import java.util.*
+
 
 class PosPrinterModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
@@ -38,7 +45,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun open(promise: Promise) {
     if(isFamoco){
-      printerDevice = POSTerminal.getInstance(reactApplicationContext).getDevice("cloudpos.device.printer") as PrinterDevice
+      printerDevice = POSTerminal.getInstance(reactApplicationContext).getDevice(DEVICE_NAME_PRINTER) as PrinterDevice
       try {
         printerDevice.open()
         promise.resolve(true)
@@ -131,7 +138,24 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun printHTML(){
+  fun printHTML(html: String, promise: Promise){
+    Handler(reactApplicationContext.mainLooper).post {
+      val sbCommand = StringBuilder()
+      sbCommand.append(html)
+      try {
+        printerDevice.printHTML(reactApplicationContext, sbCommand.toString(), object: PrinterHtmlListener {
+          override fun onGet(p0: Bitmap?, p1: Int) {
+
+          }
+          override fun onFinishPrinting(p0: Int) {
+            promise.resolve(true)
+          }
+        })
+      } catch (e: Exception) {
+        e.printStackTrace()
+        promise.resolve(false)
+      }
+    }
   }
 
   @ReactMethod

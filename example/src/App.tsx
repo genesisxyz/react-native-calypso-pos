@@ -14,7 +14,19 @@ export default function App() {
   const [isLoadingPrint, setIsLoadingPrint] = useState(false);
   const [isLoadingSam, setIsLoadingSam] = useState(false);
 
-  const print = async () => {
+  const printHTML = async () => {
+    setIsLoadingPrint(true);
+    const isOpen = await PosPrinter.open();
+    if (isOpen) {
+      await PosPrinter.printHTML(
+        '<h4 style="text-align:center;margin-top:10px;margin-bottom:0;">Durata</h4>'
+      );
+      await PosPrinter.close();
+    }
+    setIsLoadingPrint(false);
+  };
+
+  const printString = async () => {
     setIsLoadingPrint(true);
     const isOpen = await PosPrinter.open();
     if (isOpen) {
@@ -46,13 +58,24 @@ export default function App() {
     <View style={styles.container}>
       <Pressable
         style={styles.button}
-        onPress={print}
+        onPress={printHTML}
         disabled={isLoadingPrint}
       >
         {isLoadingPrint ? (
           <ActivityIndicator />
         ) : (
-          <Text style={styles.text}>PRINT</Text>
+          <Text style={styles.text}>PRINT HTML</Text>
+        )}
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={printString}
+        disabled={isLoadingPrint}
+      >
+        {isLoadingPrint ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.text}>PRINT STRING</Text>
         )}
       </Pressable>
       <Pressable style={styles.button} onPress={sam} disabled={isLoadingSam}>
