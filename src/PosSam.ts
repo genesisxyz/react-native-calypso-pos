@@ -17,6 +17,10 @@ const PosSam = NativeModules.PosSam
       }
     );
 
+export async function init(): Promise<boolean> {
+  return await PosSam.init();
+}
+
 export async function writeToCard(adpu: number[]): Promise<number[]> {
   return await PosSam.writeToCard(adpu);
 }

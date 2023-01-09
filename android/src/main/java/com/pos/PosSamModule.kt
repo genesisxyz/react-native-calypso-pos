@@ -12,6 +12,17 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   }
 
   @ReactMethod
+  fun init(promise: Promise) {
+    if (isFamoco) {
+      val famoco = Famoco(reactApplicationContext)
+      famoco.init(promise)
+    } else {
+      val telpo = Telpo(reactApplicationContext)
+      telpo.init(promise)
+    }
+  }
+
+  @ReactMethod
   fun writeToCard(apdu: ReadableArray, promise: Promise) {
     if (isFamoco) {
       val famoco = Famoco(reactApplicationContext)

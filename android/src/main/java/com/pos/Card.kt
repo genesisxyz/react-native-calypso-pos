@@ -9,6 +9,8 @@ abstract class Card {
   // you need to call this method inside open when it's all ok
   protected abstract fun initialized(status: Boolean)
 
+  abstract fun init(promise: Promise)
+
   // call open before anything else if no other promises are running
   abstract fun writeToCard(apdu: ReadableArray, promise: Promise)
 

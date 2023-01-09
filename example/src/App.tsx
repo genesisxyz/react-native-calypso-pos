@@ -31,8 +31,11 @@ export default function App() {
 
   const sam = async () => {
     setIsLoadingSam(true);
-    const response = await PosSam.writeToCard([]);
-    console.warn(response);
+    const isInitialized = await PosSam.init();
+    if (isInitialized) {
+      const response = await PosSam.writeToCard([]);
+      console.warn(response);
+    }
     setIsLoadingSam(false);
   };
 

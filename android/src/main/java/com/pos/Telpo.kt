@@ -41,6 +41,11 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     }
   }
 
+  override fun init(promise: Promise) {
+    this.promise = promise;
+    open()
+  }
+
   override fun initialized(status: Boolean) {
     if (status) {
       val challengeApdu = getChallengeApdu()
@@ -64,7 +69,9 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     if (this.promise == null) {
       this.apdu = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
       this.promise = promise;
-      open()
+      // TODO: add code for write
+      this.promise?.resolve(null)
+      this.promise = null
     } else {
       promise.reject("Write/read to card already in progress")
     }
