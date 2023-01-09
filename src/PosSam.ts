@@ -17,22 +17,6 @@ const PosSam = NativeModules.PosSam
       }
     );
 
-export async function open(): Promise<boolean> {
-  return await PosSam.open();
-}
-
-export async function close(): Promise<boolean> {
-  return await PosSam.close();
-}
-
-export async function getManufacturer(): Promise<string> {
-  return await PosSam.getManufacturer();
-}
-
-export async function transmit(command: number[]): Promise<number[]> {
-  return await PosSam.transmit(command);
-}
-
-export async function challenge(): Promise<number[]> {
-  return await PosSam.challenge();
+export async function writeToCard(adpu: number[]): Promise<number[]> {
+  return await PosSam.writeToCard(adpu);
 }

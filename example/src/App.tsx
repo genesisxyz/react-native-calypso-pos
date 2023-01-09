@@ -31,14 +31,8 @@ export default function App() {
 
   const sam = async () => {
     setIsLoadingSam(true);
-    const isOpen = await PosSam.open();
-    if (isOpen) {
-      const command = await PosSam.challenge();
-      console.warn(command.map((e) => (e & 0xff).toString(16)));
-      const res = await PosSam.transmit(command);
-      console.warn(res.map((e) => (e & 0xff).toString(16)));
-      await PosSam.close();
-    }
+    const response = await PosSam.writeToCard([]);
+    console.warn(response);
     setIsLoadingSam(false);
   };
 

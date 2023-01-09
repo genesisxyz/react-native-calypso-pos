@@ -1,0 +1,111 @@
+package com.pos
+
+import android.nfc.tech.IsoDep
+import com.facebook.react.bridge.Arguments
+import com.facebook.react.bridge.Promise
+import com.facebook.react.bridge.ReactApplicationContext
+import com.facebook.react.bridge.ReadableArray
+import com.pos.calypso.Calypso
+import com.pos.calypso.SamGetChallengeBuilder
+import com.telpo.tps550.api.TelpoException
+import com.telpo.tps550.api.reader.SmartCardReader
+import java.io.IOException
+
+class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
+
+  private lateinit var samReader: SmartCardReader
+  private lateinit var samId: String
+
+  private var promise: Promise? = null
+  private lateinit var apdu: ByteArray;
+
+  private val isoDep: IsoDep? = null
+
+  override fun open() {
+    try {
+      samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM2)
+      samReader.open()
+      val isPowerOn = samReader.iccPowerOn()
+      if(isPowerOn) {
+        val atrString = samReader.atrString
+        if (atrString !== null) {
+          samId = atrString.substring(24, 32)
+          initialized(true)
+          return
+        }
+      }
+      initialized(false)
+    }
+    catch (e: Throwable){
+      initialized(false)
+    }
+  }
+
+  override fun initialized(status: Boolean) {
+    if (status) {
+      val challengeApdu = getChallengeApdu()
+      val response = transmitToSam(challengeApdu)
+
+      val array = Arguments.createArray()
+      response?.forEach {
+        array.pushInt(it.toInt())
+      }
+      promise?.resolve(array)
+      promise = null
+
+      close()
+    } else {
+      promise?.reject("Initialization failed")
+      promise = null
+    }
+  }
+
+  override fun writeToCard(apdu: ReadableArray, promise: Promise) {
+    if (this.promise == null) {
+      this.apdu = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
+      this.promise = promise;
+      open()
+    } else {
+      promise.reject("Write/read to card already in progress")
+    }
+  }
+
+  override fun getChallengeApdu(): ByteArray {
+    val samGetChallengeBuilder = SamGetChallengeBuilder(Calypso.SAM_CHALLENGE_LENGTH_BYTES)
+    val apdu = samGetChallengeBuilder.apdu
+    return apdu
+  }
+
+  override fun transmitToSam(apdu: ByteArray): ByteArray? {
+    return try {
+      val response = samReader.transmit(apdu)
+      response
+    } catch (e: NullPointerException){
+      null
+    }
+  }
+
+  override fun transmitToCard(apdu: ByteArray): ByteArray? {
+    for (i in 0..9) {
+      try {
+        val response = isoDep?.transceive(apdu)
+        if (response != null) {
+          return response
+        }
+      } catch (e: IOException) {
+        e.printStackTrace()
+      }
+    }
+    return null
+  }
+
+  override fun close(): Boolean {
+    return try {
+      samReader.close()
+      true
+    } catch (e: TelpoException) {
+      e.printStackTrace()
+      false
+    }
+  }
+}
