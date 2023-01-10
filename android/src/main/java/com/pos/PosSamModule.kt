@@ -33,6 +33,15 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
     }
   }
 
+  @ReactMethod
+  fun readRecordsFromCard(promise: Promise){
+    if(isFamoco){
+    }else{
+      val telpo = Telpo(reactApplicationContext)
+      telpo.readRecordsFromCard(promise)
+    }
+  }
+
   companion object {
     const val NAME = "PosSam"
   }

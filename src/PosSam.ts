@@ -24,3 +24,7 @@ export async function init(): Promise<boolean> {
 export async function writeToCard(adpu: number[]): Promise<number[]> {
   return await PosSam.writeToCard(adpu);
 }
+
+export async function readRecordsFromCard(): Promise<object> {
+  return await PosSam.readRecordsFromCard();
+}
