@@ -3,6 +3,7 @@ package com.pos
 import com.facebook.react.bridge.*
 import com.pos.byte_stuff.ByteConvertReactNativeUtil
 import com.pos.byte_stuff.ByteConvertStringUtil
+import java.math.BigInteger
 import java.nio.charset.StandardCharsets
 
 class ByteUtilsModule(reactContext: ReactApplicationContext) :
@@ -29,6 +30,19 @@ class ByteUtilsModule(reactContext: ReactApplicationContext) :
     val bytes = ByteConvertReactNativeUtil.readableArrayToByteArray(array)
     val hexString = ByteConvertStringUtil.bytesToHexString(bytes)
     promise.resolve(hexString)
+  }
+
+  @ReactMethod
+  fun shiftRight(array: ReadableArray, n: Int, promise: Promise) {
+    val bytes = ByteConvertReactNativeUtil.readableArrayToByteArray(array)
+    val bigInteger = BigInteger(bytes).shiftRight(n)
+    promise.resolve(ByteConvertReactNativeUtil.byteArrayToReadableArray(bigInteger.toByteArray()))
+  }
+
+  @ReactMethod
+  fun stringFromByteArray(array: ReadableArray, promise: Promise) {
+    val bytes = ByteConvertReactNativeUtil.readableArrayToByteArray(array)
+    promise.resolve(String(bytes))
   }
 
   companion object {

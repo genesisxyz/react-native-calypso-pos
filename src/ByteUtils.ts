@@ -28,3 +28,14 @@ export async function bytesFromString(str: string): Promise<number[]> {
 export async function bytesToHexString(bytes: number[]): Promise<string> {
   return await ByteUtils.bytesToHexString(bytes);
 }
+
+export async function shiftRight(
+  bytes: number[],
+  n: number
+): Promise<number[]> {
+  return await ByteUtils.shiftRight(bytes, n);
+}
+
+export async function stringFromByteArray(bytes: number[]): Promise<string> {
+  return await ByteUtils.stringFromByteArray(bytes);
+}

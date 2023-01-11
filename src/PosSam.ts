@@ -17,6 +17,27 @@ const PosSam = NativeModules.PosSam
       }
     );
 
+type CalypsoConstants = {
+  ZERO_TIME_MILLIS: number;
+  SAM_CHALLENGE_LENGTH_BYTES: number;
+  AID: number[];
+  EF_ENVIRONMENT_CARD_STATUS_INDEX: number;
+  EF_ENVIRONMENT_CARD_STATUS_MASK: number;
+  EF_ENVIRONMENT_EXPIRATION_MASK: number[];
+  EF_ENVIRONMENT_EXPIRATION_INDEX: number;
+  EF_ENVIRONMENT_EXPIRATION_LENGTH: number;
+  EF_ENVIRONMENT_ISSUE_DATE_INDEX: number;
+  EF_ENVIRONMENT_ISSUE_DATE_LENGTH: number;
+  EF_ENVIRONMENT_DATA_FORMAT_INDEX: number;
+  EF_ENVIRONMENT_CARD_CIRCUIT_INDEX: number;
+  CARD_DATA_FORMAT: number;
+  CARD_BIP_CIRCUIT: number;
+  EF_ENVIRONMENT_TAX_CODE_INDEX: number;
+  EF_ENVIRONMENT_TAX_CODE_LENGTH: number;
+};
+
+export const CALYPSO: CalypsoConstants = PosSam.getConstants();
+
 export async function init(): Promise<boolean> {
   return await PosSam.init();
 }
