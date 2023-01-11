@@ -51,19 +51,18 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
       val challengeApdu = getChallengeApdu()
       val response = transmitToSam(challengeApdu)
 
-      val array = Arguments.createArray()
-      response?.forEach {
-        array.pushInt(it.toInt())
-      }
-      promise?.resolve(array)
+      // TODO: check if the response is ok
+      promise?.resolve(true)
       promise = null
 
       close()
     } else {
-      promise?.reject("Initialization failed")
+      promise?.resolve(false)
       promise = null
     }
   }
+
+  override fun readRecordsFromCard(promise: Promise) {}
 
   override fun writeToCard(apdu: ReadableArray, promise: Promise) {
     if (this.promise == null) {

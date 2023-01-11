@@ -6,8 +6,8 @@ const LINKING_ERROR =
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo Go\n';
 
-const PosSam = NativeModules.PosSam
-  ? NativeModules.PosSam
+const ByteUtils = NativeModules.ByteUtils
+  ? NativeModules.ByteUtils
   : new Proxy(
       {},
       {
@@ -17,14 +17,14 @@ const PosSam = NativeModules.PosSam
       }
     );
 
-export async function init(): Promise<boolean> {
-  return await PosSam.init();
+export async function stringToByteArray(str: string): Promise<number[]> {
+  return await ByteUtils.stringToByteArray(str);
 }
 
-export async function readRecordsFromCard(): Promise<any> {
-  return await PosSam.readRecordsFromCard();
+export async function bytesFromString(str: string): Promise<number[]> {
+  return await ByteUtils.bytesFromString(str);
 }
 
-export async function writeToCard(adpu: number[]): Promise<number[]> {
-  return await PosSam.writeToCard(adpu);
+export async function bytesToHexString(bytes: number[]): Promise<string> {
+  return await ByteUtils.bytesToHexString(bytes);
 }

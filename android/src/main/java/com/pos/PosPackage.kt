@@ -8,7 +8,7 @@ import com.facebook.react.uimanager.ViewManager
 
 class PosPackage : ReactPackage {
   override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
-    return listOf(PosPrinterModule(reactContext), PosSamModule(reactContext))
+    return listOf(PosPrinterModule(reactContext), PosSamModule(reactContext), ByteUtilsModule(reactContext))
   }
 
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
