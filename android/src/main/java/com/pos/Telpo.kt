@@ -5,8 +5,8 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
-import com.pos.calypso.Calypso
-import com.pos.calypso.SamGetChallengeBuilder
+import com.pos.byte_stuff.ByteConvertReactNativeUtil
+import com.pos.calypso.*
 import com.telpo.tps550.api.TelpoException
 import com.telpo.tps550.api.reader.SmartCardReader
 import java.io.IOException
@@ -62,8 +62,6 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     }
   }
 
-  override fun readRecordsFromCard(promise: Promise) {}
-
   override fun writeToCard(apdu: ReadableArray, promise: Promise) {
     if (this.promise == null) {
       this.apdu = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
@@ -73,6 +71,32 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
       this.promise = null
     } else {
       promise.reject("Write/read to card already in progress")
+    }
+  }
+
+  override fun readRecordsFromCard(promise: Promise){
+    val readRecordsBuilder = CardReadRecordsBuilder(
+      Calypso.SFI_EF_ENVIRONMENT, 1,
+      CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0)
+
+    val readRecordsResponseAdapter = ApduResponseAdapter(transmitToCard(readRecordsBuilder.apdu))
+
+    val readRecordsParser: CardReadRecordsParser = readRecordsBuilder.createResponseParser(readRecordsResponseAdapter)
+
+    readRecordsParser.checkStatus()
+
+    val records: Map<Int, ByteArray> = readRecordsParser.records
+    if(records != null && records.isNotEmpty()){
+      val readableMap = Arguments.createMap()
+      for ((key, value) in records) {
+        if (value != null) {
+          readableMap.putInt(key.toString(), key)
+          readableMap.putArray(value.toString(), ByteConvertReactNativeUtil.byteArrayToReadableArray(value))
+        }
+      }
+      promise.resolve(readableMap)
+    } else{
+      promise.reject("records null or empty")
     }
   }
 
