@@ -8,7 +8,7 @@ public class ByteUtils {
 
     public static byte[] bitwiseAnd(byte[] array1, byte[] array2) {
         if(array1.length != array2.length)
-            throw new IllegalStateException("Arrays must have same length!");
+            return null;
 
         byte[] result = array1.clone();
         for(int i = 0; i < array1.length; i++) {
@@ -20,7 +20,7 @@ public class ByteUtils {
 
     public static byte[] bitwiseOr(byte[] array1, byte[] array2) {
         if(array1.length != array2.length)
-            throw new IllegalStateException("Arrays must have same length!");
+            return null;
 
         byte[] result = array1.clone();
         for(int i = 0; i < array1.length; i++) {

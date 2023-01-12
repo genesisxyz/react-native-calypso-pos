@@ -43,7 +43,7 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
         if (arg0.resultCode == OperationResult.SUCCESS) {
           samCard = (arg0 as SmartCardReaderOperationResult).card
           try {
-            val tempSamId: String = ByteConvertStringUtil.bytesToHexString(samCard.id)
+            val tempSamId = ByteConvertStringUtil.bytesToHexString(samCard.id)
             if (tempSamId != null) samId = tempSamId.substring(24, 32)
             initialized(true)
           } catch (e: DeviceException) {

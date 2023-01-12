@@ -17,25 +17,31 @@ const ByteUtils = NativeModules.ByteUtils
       }
     );
 
-export async function stringToByteArray(str: string): Promise<number[]> {
-  return await ByteUtils.stringToByteArray(str);
+export async function stringToByteArray(
+  str: string
+): Promise<Uint8Array | null> {
+  const bytes = await ByteUtils.stringToByteArray(str);
+  return bytes ? new Uint8Array(bytes) : null;
 }
 
-export async function bytesFromString(str: string): Promise<number[]> {
-  return await ByteUtils.bytesFromString(str);
+export async function bytesFromString(str: string): Promise<Uint8Array | null> {
+  const bytes = await ByteUtils.bytesFromString(str);
+  return bytes ? new Uint8Array(bytes) : null;
 }
 
-export async function bytesToHexString(bytes: number[]): Promise<string> {
-  return await ByteUtils.bytesToHexString(bytes);
+export async function bytesToHexString(
+  bytes: Uint8Array
+): Promise<string | null> {
+  return await ByteUtils.bytesToHexString(Array.from(bytes));
 }
 
 export async function shiftRight(
-  bytes: number[],
+  bytes: Uint8Array,
   n: number
-): Promise<number[]> {
-  return await ByteUtils.shiftRight(bytes, n);
+): Promise<Uint8Array> {
+  return new Uint8Array(await ByteUtils.shiftRight(Array.from(bytes), n));
 }
 
-export async function stringFromByteArray(bytes: number[]): Promise<string> {
+export async function stringFromByteArray(bytes: Uint8Array): Promise<string> {
   return await ByteUtils.stringFromByteArray(bytes);
 }

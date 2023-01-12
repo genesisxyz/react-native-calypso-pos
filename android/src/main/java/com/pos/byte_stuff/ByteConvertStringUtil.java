@@ -65,14 +65,14 @@ public class ByteConvertStringUtil {
 	public static byte[] stringToByteArray(String strInput) {
 		String arryString = strInput.replaceAll("\\s+", "");
 		if(arryString.length() % 2 != 0)
-			throw new RuntimeException("Wrong string length!");
+			return null;
 
 		byte[] bytes = new byte[arryString.length() / 2];
 
 		for(int i = 0; i < arryString.length();) {
 			String substring = arryString.substring(i, i + 2);
 			if (!CheckString(substring)) {
-				throw new RuntimeException("Something is wrong with this string!");
+				return null;
 			}
 
 			bytes[i / 2] = StringToByte(substring);
@@ -100,15 +100,15 @@ public class ByteConvertStringUtil {
 		}
 	}
 
-	protected static boolean CheckByte(byte byteIn) {
-		if (byteIn <= 57 && byteIn >= 48) {
-			return true;
-		} else if (byteIn <= 70 && byteIn >= 65) {
-			return true;
-		} else {
-			return byteIn <= 102 && byteIn >= 97;
-		}
-	}
+    protected static boolean CheckByte(byte byteIn) {
+      if (byteIn <= 57 && byteIn >= 48) {
+        return true;
+      } else if (byteIn <= 70 && byteIn >= 65) {
+        return true;
+      } else {
+        return byteIn <= 102 && byteIn >= 97;
+      }
+    }
 
 	protected static byte StringToByte(String strInput) {
 		byte[] byteArry = strInput.getBytes();
