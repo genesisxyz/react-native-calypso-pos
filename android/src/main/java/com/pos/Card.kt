@@ -1,9 +1,10 @@
 package com.pos
 
+import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableArray
 
-abstract class Card {
+abstract class Card : BaseActivityEventListener() {
   protected abstract fun open()
 
   // you need to call this method inside open when it's all ok
