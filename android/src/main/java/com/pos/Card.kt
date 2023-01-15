@@ -1,10 +1,10 @@
 package com.pos
 
+import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableArray
 
-abstract class Card {
-
+abstract class Card : BaseActivityEventListener() {
   abstract suspend fun init(promise: Promise)
 
   abstract suspend fun readRecordsFromCard(promise: Promise)
