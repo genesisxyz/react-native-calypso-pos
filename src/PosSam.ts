@@ -35,6 +35,7 @@ type CalypsoConstants = {
   CARD_BIP_CIRCUIT: number;
   EF_ENVIRONMENT_TAX_CODE_INDEX: number;
   EF_ENVIRONMENT_TAX_CODE_LENGTH: number;
+  CARD_EMISSION_TIME_LENGTH_IN_BYTES: number;
 };
 
 const constants = PosSam.getConstants();
@@ -55,8 +56,8 @@ export async function readRecordsFromCard(): Promise<Record<number, number[]>> {
   return await PosSam.readRecordsFromCard();
 }
 
-export async function writeToCard(adpu: number[]): Promise<number[]> {
-  return await PosSam.writeToCard(adpu);
+export async function writeToCard(adpu: Uint8Array): Promise<void> {
+  return await PosSam.writeToCard(Array.from(adpu));
 }
 
 function bitwiseAnd(array1: Uint8Array, array2: Uint8Array) {

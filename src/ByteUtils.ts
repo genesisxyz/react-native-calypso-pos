@@ -24,6 +24,13 @@ export async function stringToByteArray(
   return bytes ? new Uint8Array(bytes) : null;
 }
 
+export async function makeByteArrayFromString(
+  str: string
+): Promise<Uint8Array> {
+  const bytes = await ByteUtils.makeByteArrayFromString(str);
+  return new Uint8Array(bytes);
+}
+
 export async function bytesFromString(str: string): Promise<Uint8Array | null> {
   const bytes = await ByteUtils.bytesFromString(str);
   return bytes ? new Uint8Array(bytes) : null;
@@ -33,6 +40,10 @@ export async function bytesToHexString(
   bytes: Uint8Array
 ): Promise<string | null> {
   return await ByteUtils.bytesToHexString(Array.from(bytes));
+}
+
+export async function byteToHexString(byte: number): Promise<string> {
+  return await ByteUtils.byteToHexString(byte);
 }
 
 export async function shiftRight(

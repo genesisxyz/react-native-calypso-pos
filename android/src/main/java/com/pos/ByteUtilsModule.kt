@@ -20,6 +20,14 @@ class ByteUtilsModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun makeByteArrayFromString(str: String, promise: Promise) {
+    val byteCount = str.split(Regex("\\s+")).size
+    val bytes = ByteArray(byteCount)
+    ByteConvertStringUtil.stringToByteArray(str, bytes)
+    promise.resolve(ByteConvertReactNativeUtil.byteArrayToReadableArray(bytes))
+  }
+
+  @ReactMethod
   fun bytesFromString(str: String, promise: Promise) {
     val bytes = str.toByteArray(StandardCharsets.UTF_8);
     promise.resolve(ByteConvertReactNativeUtil.byteArrayToReadableArray(bytes))
@@ -29,6 +37,12 @@ class ByteUtilsModule(reactContext: ReactApplicationContext) :
   fun bytesToHexString(array: ReadableArray, promise: Promise) {
     val bytes = ByteConvertReactNativeUtil.readableArrayToByteArray(array)
     val hexString = ByteConvertStringUtil.bytesToHexString(bytes)
+    promise.resolve(hexString)
+  }
+
+  @ReactMethod
+  fun byteToHexString(byte: Double, promise: Promise) {
+    val hexString = ByteConvertStringUtil.byteToHexString(byte.toInt().toByte())
     promise.resolve(hexString)
   }
 

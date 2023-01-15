@@ -14,9 +14,11 @@ import com.facebook.react.bridge.ReadableArray
 import com.pos.byte_stuff.ByteConvertReactNativeUtil
 import com.pos.byte_stuff.ByteConvertStringUtil
 import com.pos.calypso.*
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() {
-
   private lateinit var samId: String
   private lateinit var samCard: Card
   private lateinit var rfCard: Card
@@ -25,81 +27,43 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
   private lateinit var famocoRFCardReaderDevice: RFCardReaderDevice
   private lateinit var famocoSmartCardReaderDevice: SmartCardReaderDevice
 
-  private var promise: Promise? = null
-  private lateinit var apdu: ByteArray;
+  private suspend fun getSamCard() = suspendCancellableCoroutine<Unit> { cont ->
+    val listener = OperationListener { arg0: OperationResult ->
+      try {
+        if (arg0.resultCode == OperationResult.SUCCESS) {
+          samCard = (arg0 as SmartCardReaderOperationResult).card
+          val tempSamId = ByteConvertStringUtil.bytesToHexString(samCard.id)
+          if (tempSamId != null) samId = tempSamId.substring(24, 32)
+          cont.resume(Unit)
+        }
+      } catch (e: Throwable) {
+        cont.resumeWithException(e)
+      }
+    }
+    famocoSmartCardReaderDevice.listenForCardPresent(listener, TimeConstants.FOREVER)
+  }
 
-  override fun open() {
+  override suspend fun init(promise: Promise) {
     try {
       famocoRFCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice("cloudpos.device.rfcardreader") as RFCardReaderDevice
       famocoSmartCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice("cloudpos.device.smartcardreader", famocoSamLogicalID) as SmartCardReaderDevice
+
+      openSamReader()
+      getSamCard()
+      promise.resolve(true)
+      closeSamReader()
     } catch (e: Throwable) {
       e.printStackTrace()
-      initialized(false)
-    }
-
-    try {
-      famocoSmartCardReaderDevice.open(famocoSamLogicalID)
-      val listener = OperationListener { arg0: OperationResult ->
-        if (arg0.resultCode == OperationResult.SUCCESS) {
-          samCard = (arg0 as SmartCardReaderOperationResult).card
-          try {
-            val tempSamId = ByteConvertStringUtil.bytesToHexString(samCard.id)
-            if (tempSamId != null) samId = tempSamId.substring(24, 32)
-            initialized(true)
-          } catch (e: DeviceException) {
-            e.printStackTrace()
-            initialized(false)
-          }
-        }
-      }
-      famocoSmartCardReaderDevice.listenForCardPresent(listener, TimeConstants.FOREVER)
-    } catch (e: DeviceException){
-      e.printStackTrace()
-      initialized(false)
-    }
-  }
-
-  override fun init(promise: Promise) {
-    this.promise = promise;
-    open()
-  }
-
-  override fun initialized(status: Boolean) {
-    if (status) {
-      val challengeApdu = getChallengeApdu()
-
-      connectSam()
-      val response = transmitToSam(challengeApdu)
-      disconnectSam()
-
-      // TODO: check if the response is ok
-      promise?.resolve(true)
-      promise = null
-
-      close()
-    } else {
-      promise?.resolve(false)
-      promise = null
+      promise.resolve(false)
     }
   }
 
   private val CP_SAM_UNLOCK_STRING: String = "62 EE D0 33 FB 9F D1 85 B3 C7 DA BD 02 82 D6 EC"
 
-  private fun waitForCard(callback: () -> Unit) {
+  private suspend fun waitForCard() = suspendCancellableCoroutine<Unit> { cont ->
     try {
-      famocoRFCardReaderDevice.open()
-    } catch (e: DeviceException) {
-      e.printStackTrace()
-      if (e.code != -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
-      } else {
-        // TODO device is ready
-      }
-    }
+      var cardId: String? = null
 
-    var cardId: String? = null
-
-    try {
       val operationResult: OperationResult = famocoRFCardReaderDevice.waitForCardPresent(TimeConstants.FOREVER)
       if (operationResult.resultCode == OperationResult.SUCCESS) {
         rfCard = (operationResult as RFCardReaderOperationResult).card
@@ -111,109 +75,101 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
           cardId =
             cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
         }
-        callback()
+        cont.resume(Unit)
       } else {
         throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
       }
     } catch (e: DeviceException) {
       e.printStackTrace()
-
       // pending request
       if (e.code == -3) {
-        try {
-          famocoRFCardReaderDevice.cancelRequest()
-        } catch (deviceException: DeviceException) {
-          deviceException.printStackTrace()
-        }
-      }
-
-      throw e
-    } finally {
-      famocoRFCardReaderDevice.close()
-    }
-  }
-
-  override fun readRecordsFromCard(promise: Promise) {
-    try {
-      waitForCard {
-
-            connectCard()
-
-            val selectApplicationBuilder = SelectApplicationBuilder(
-              SelectApplicationBuilder.SELECT_FIRST_OCCURRENCE_RETURN_FCI)
-
-            val selectApplicationResponseAdapter = ApduResponseAdapter(
-              transmitToCard(selectApplicationBuilder.apdu))
-
-            val selectApplicationParser = selectApplicationBuilder
-              .createResponseParser(selectApplicationResponseAdapter)
-
-            selectApplicationParser.checkStatus()
-
-            if (!selectApplicationParser.isBipApplication) {
-              throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
-            }
-
-            val selectFileBuilder = CardSelectFileBuilder(Calypso.LID_EF_ENVIRONMENT)
-
-            val selectFileResponseAdapter = ApduResponseAdapter(transmitToCard(selectFileBuilder.apdu))
-
-            val selectFileParser = selectFileBuilder
-              .createResponseParser(selectFileResponseAdapter)
-
-            selectFileParser.checkStatus()
-
-            if (!selectFileParser.isSuccess || selectFileParser.proprietaryInformation == null) {
-              throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
-            }
-
-            val readRecordsBuilder = CardReadRecordsBuilder(
-              Calypso.SFI_EF_ENVIRONMENT, 1,
-              CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0)
-
-            val readRecordsResponseAdapter = ApduResponseAdapter(transmitToCard(readRecordsBuilder.apdu))
-
-            val readRecordsParser = readRecordsBuilder.createResponseParser(readRecordsResponseAdapter)
-
-            readRecordsParser.checkStatus()
-
-            val records: Map<Int, ByteArray> = readRecordsParser.records
-
-            disconnectCard()
-
-            val readableMap = Arguments.createMap();
-            for ((key, record) in records) {
-              val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
-              readableMap.putArray(key.toString(), array)
-            }
-
-            promise.resolve(readableMap)
-
-      }
-    } catch (e: Exception) {
-      e.printStackTrace()
-      if (e is PosException) {
-        promise.reject(e)
+        cancelCardRequest()
+        cont.resumeWithException(PosException(PosException.PENDING_REQUEST, "Pending request"))
       } else {
-        promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not present"))
+        cont.resumeWithException(e)
       }
     }
   }
 
-  override fun writeToCard(apdu: ReadableArray, promise: Promise) {
-    if (this.promise == null) {
-      this.apdu = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
-      this.promise = promise;
-      // TODO: add code for write
+  override suspend fun readRecordsFromCard(promise: Promise) {
+    try {
+      openCardReader()
+      waitForCard()
+      connectCard()
 
+      val selectApplicationBuilder = SelectApplicationBuilder(
+        SelectApplicationBuilder.SELECT_FIRST_OCCURRENCE_RETURN_FCI)
 
-      val commandsSequenceBuilder = StringBuilder()
+      val selectApplicationResponseAdapter = ApduResponseAdapter(transmitToCard(selectApplicationBuilder.apdu))
 
+      val selectApplicationParser = selectApplicationBuilder.createResponseParser(selectApplicationResponseAdapter)
 
+      selectApplicationParser.checkStatus()
 
+      // TODO is this necessary?
+      /*
+      if (!selectApplicationParser.isBipApplication) {
+        throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
+      }
+      */
+
+      val selectFileBuilder = CardSelectFileBuilder(Calypso.LID_EF_ENVIRONMENT)
+
+      val selectFileResponseAdapter = ApduResponseAdapter(transmitToCard(selectFileBuilder.apdu))
+
+      val selectFileParser = selectFileBuilder
+        .createResponseParser(selectFileResponseAdapter)
+
+      selectFileParser.checkStatus()
+
+      if (!selectFileParser.isSuccess || selectFileParser.proprietaryInformation == null) {
+        throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
+      }
+
+      val readRecordsBuilder = CardReadRecordsBuilder(
+        Calypso.SFI_EF_ENVIRONMENT, 1,
+        CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0)
+
+      val readRecordsResponseAdapter = ApduResponseAdapter(transmitToCard(readRecordsBuilder.apdu))
+
+      val readRecordsParser = readRecordsBuilder.createResponseParser(readRecordsResponseAdapter)
+
+      readRecordsParser.checkStatus()
+
+      val records: Map<Int, ByteArray> = readRecordsParser.records
+
+      val readableMap = Arguments.createMap();
+      for ((key, record) in records) {
+        val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
+        readableMap.putArray(key.toString(), array)
+      }
+
+      promise.resolve(readableMap)
+    } catch (e: Throwable) {
+      e.printStackTrace()
+      promise.reject(
+        when (e) {
+          is PosException -> e
+          is CardCommandException -> PosException(PosException.TRANSMIT_APDU_COMMAND, "Command status failed")
+          else -> PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+        }
+      )
+    } finally {
+      disconnectCard()
+      closeCardReader()
+    }
+  }
+
+  override suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
       try {
-
+        openCardReader()
+        waitForCard()
         connectSam()
+        connectCard()
+
+        val newRecord = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
+
+        val commandsSequenceBuilder = StringBuilder()
 
         // preparing select application command
         val selectApplicationBuilder = SelectApplicationBuilder(
@@ -224,27 +180,19 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
             selectApplicationBuilder.apdu)).append("\n\n")
 
         // launching command and putting response into an adapter
-
-        // launching command and putting response into an adapter
         val selectApplicationResponseAdapter = ApduResponseAdapter(
-          transmitToCard(selectApplicationBuilder.getApdu()))
+          transmitToCard(selectApplicationBuilder.apdu))
 
         commandsSequenceBuilder.append(
           ByteConvertStringUtil.bytesToHexString(
-            selectApplicationResponseAdapter.getApdu())).append("\n\n")
-
-        // parsing response
+            selectApplicationResponseAdapter.apdu)).append("\n\n")
 
         // parsing response
         val selectApplicationParser: SelectApplicationParser = selectApplicationBuilder
           .createResponseParser(selectApplicationResponseAdapter)
 
         // checking response successfulness
-
-        // checking response successfulness
         selectApplicationParser.checkStatus()
-
-        // preparing command to unlock sam
 
         // preparing command to unlock sam
         val samUnlockBuilder = SamUnlockBuilder(
@@ -254,14 +202,10 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
           .bytesToHexString(samUnlockBuilder.apdu)).append("\n\n")
 
         // launching command and putting response into an adapter
-
-        // launching command and putting response into an adapter
         val samUnlockResponseAdapter = ApduResponseAdapter(transmitToSam(samUnlockBuilder.apdu))
 
         commandsSequenceBuilder.append(ByteConvertStringUtil
           .bytesToHexString(samUnlockResponseAdapter.apdu)).append("\n\n")
-
-        // parsing response
 
         // parsing response
         val samUnlockParser: SamUnlockParser = samUnlockBuilder.createResponseParser(samUnlockResponseAdapter)
@@ -391,53 +335,162 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
         samDigestInitParser.checkStatus()
 
 
-        // preparing data to write on EF Environment card file
+        // preparing to update EF Environment data
+        val cardUpdateRecordBuilder = CardUpdateRecordBuilder(Calypso.SFI_EF_ENVIRONMENT.toByte(),
+          1, newRecord)
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(cardUpdateRecordBuilder.apdu)).append("\n\n")
+
+        // launching command and putting response into an adapter
+        val cardUpdateAdapter = ApduResponseAdapter(
+          transmitToCard(cardUpdateRecordBuilder.apdu))
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(cardUpdateAdapter.apdu)).append("\n\n")
+
+        // parsing response
+        val cardUpdateRecordParser = cardUpdateRecordBuilder
+          .createResponseParser(cardUpdateAdapter)
+
+        // checking response successfulness
+        cardUpdateRecordParser.checkStatus()
+
+        // preparing to update digest with update record command
+        val samDigestUpdateCardWriteRequestBuilder = SamDigestUpdateBuilder(false,
+          cardUpdateRecordBuilder.apdu)
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestUpdateCardWriteRequestBuilder.apdu)).append("\n\n")
+
+        // launching command and putting response into an adapter
+        val samDigestUpdateCardWriteRequestResponseAdapter = ApduResponseAdapter(
+          transmitToSam(samDigestUpdateCardWriteRequestBuilder.apdu))
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestUpdateCardWriteRequestResponseAdapter.apdu)).append("\n\n")
+
+        // parsing response
+        val samDigestUpdateCardWriteRequestParser = samDigestUpdateCardWriteRequestBuilder.createResponseParser(
+          samDigestUpdateCardWriteRequestResponseAdapter)
+
+        // checking response successfulness
+        samDigestUpdateCardWriteRequestParser.checkStatus()
+
+        // preparing to update digest with update record response
+        val samDigestUpdateCardWriteResponseBuilder = SamDigestUpdateBuilder(false,
+          cardUpdateRecordParser.response.apdu)
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestUpdateCardWriteResponseBuilder.apdu)).append("\n\n")
+
+        // launching command and putting response into an adapter
+        val samDigestUpdateCardWriteResponseResponseAdapter = ApduResponseAdapter(transmitToSam(
+          samDigestUpdateCardWriteResponseBuilder.apdu
+        ))
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestUpdateCardWriteResponseResponseAdapter.apdu)).append("\n\n")
+
+        // parsing response
+        val samDigestUpdateCardWriteResponseParser = samDigestUpdateCardWriteResponseBuilder.createResponseParser(
+          samDigestUpdateCardWriteResponseResponseAdapter)
+
+        // checking response successfulness
+        samDigestUpdateCardWriteResponseParser.checkStatus()
+
+        // preparing to close digest
+        val samDigestCloseBuilder = SamDigestCloseBuilder(Calypso.SAM_DIGEST_CLOSE_EXPECTED_LENGTH)
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestCloseBuilder.apdu)).append("\n\n")
+
+        // launching command and putting response into an adapter
+        val samDigestCloseResponseAdapter = ApduResponseAdapter(transmitToSam(samDigestCloseBuilder.apdu))
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestCloseResponseAdapter.apdu)).append("\n\n")
+
+        // parsing response
+        val samDigestCloseParser = samDigestCloseBuilder
+          .createResponseParser(samDigestCloseResponseAdapter)
+
+        // checking response successfulness
+        samDigestCloseParser.checkStatus()
+
+        // preparing close session command
+        val cardCloseSessionBuilder = CardCloseSessionBuilder(true,
+          samDigestCloseParser.signature)
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(cardCloseSessionBuilder.apdu)).append("\n\n")
+
+        // launching command and putting response into an adapter
+        val cardCloseSessionResponseAdapter = ApduResponseAdapter(
+          transmitToCard(cardCloseSessionBuilder.apdu))
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(cardCloseSessionResponseAdapter.apdu)).append("\n\n")
+
+        // parsing response
+        val cardCloseSessionParser = cardCloseSessionBuilder
+          .createResponseParser(cardCloseSessionResponseAdapter)
+
+        // checking response successfulness
+        cardCloseSessionParser.checkStatus()
+
+        // preparing to check authenticity of close session response
+        val samDigestAuthenticateBuilder = SamDigestAuthenticateBuilder(cardCloseSessionParser.signatureLo)
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestAuthenticateBuilder.apdu)).append("\n\n")
+
+        // launching command and putting response into an adapter
+        val samDigestAuthenticateResponseAdapter = ApduResponseAdapter(transmitToSam(samDigestAuthenticateBuilder.apdu))
+
+        commandsSequenceBuilder.append(ByteConvertStringUtil
+          .bytesToHexString(samDigestAuthenticateResponseAdapter.apdu)).append("\n\n")
+
+        // parsing response
+        val samDigestAuthenticateParser = samDigestAuthenticateBuilder.createResponseParser(
+          samDigestAuthenticateResponseAdapter)
+
+        // checking response successfulness
+        samDigestAuthenticateParser.checkStatus()
 
 
+        promise.resolve(true)
 
-
-
-      } catch (e: Exception) {
-
-      } finally {
-          disconnectSam()
-        disconnectCard()
-      }
-
-
-
-
-      this.promise?.resolve(null)
-      this.promise = null
-    } else {
-      promise.reject("Write/read to card in progress")
+    } catch (e: Exception) {
+      promise.reject(e)
+    } finally {
+      disconnectSam()
+      disconnectCard()
+      closeCardReader()
     }
   }
 
-  override fun getChallengeApdu(): ByteArray {
-    val samGetChallengeBuilder = SamGetChallengeBuilder(Calypso.SAM_CHALLENGE_LENGTH_BYTES)
-    return samGetChallengeBuilder.apdu;
-  }
-
-  fun connectSam() {
+  private fun connectSam() {
+    openSamReader()
     try {
       (samCard as CPUCard).connect()
     } catch (e: DeviceException) {
       e.printStackTrace()
-      if (e.code != -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Sam not present")
-      }
+      closeSamReader()
+      throw e
     }
   }
 
-  fun disconnectSam() {
+  private fun disconnectSam() {
     try {
       (samCard as CPUCard).disconnect()
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code != -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Sam not present")
+        throw e
       }
+    } finally {
+        closeSamReader()
     }
   }
 
@@ -449,24 +502,22 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
     }
   }
 
-  fun connectCard() {
+  private fun connectCard() {
     try {
       (rfCard as CPUCard).connect()
     } catch (e: DeviceException) {
       e.printStackTrace()
-      if (e.code != -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
-      }
+      throw e
     }
   }
 
-  fun disconnectCard() {
+  private fun disconnectCard() {
     try {
       (rfCard as CPUCard).disconnect()
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code != -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+        throw e
       }
     }
   }
@@ -479,12 +530,56 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
     }
   }
 
-  override fun close(): Boolean {
-    return try {
-      famocoSmartCardReaderDevice.close()
-      true
+  private fun openSamReader() {
+    try {
+      famocoSmartCardReaderDevice.open(famocoSamLogicalID)
     } catch (e: DeviceException) {
-      false
+      if (e.code == -1) {
+        throw e
+      }
+    }
+  }
+
+  private fun closeSamReader() {
+    try {
+      famocoSmartCardReaderDevice.close()
+    } catch (e: DeviceException) {
+      if (e.code == -1) {
+        throw e
+      }
+    }
+  }
+
+  private fun openCardReader() {
+    try {
+      famocoRFCardReaderDevice.open()
+    } catch (e: DeviceException) {
+      e.printStackTrace()
+      if (e.code == -1) {
+        throw e
+      }
+    }
+  }
+
+  private fun closeCardReader() {
+    try {
+      famocoRFCardReaderDevice.close()
+    } catch (e: DeviceException) {
+      e.printStackTrace()
+      if (e.code == -1) {
+        throw e
+      }
+    }
+  }
+
+  private fun cancelCardRequest() {
+    try {
+      famocoRFCardReaderDevice.cancelRequest()
+    } catch (e: DeviceException) {
+      e.printStackTrace()
+      if (e.code == -1) {
+        throw e
+      }
     }
   }
 }

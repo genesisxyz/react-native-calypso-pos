@@ -1,11 +1,10 @@
 package com.pos
 
 import android.os.Build
-import android.widget.Toast
 import com.facebook.react.bridge.*
 import com.pos.byte_stuff.ByteConvertReactNativeUtil
-import com.pos.byte_stuff.ByteUtils
 import com.pos.calypso.Calypso
+import kotlinx.coroutines.*
 
 
 class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -37,26 +36,36 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
       "CARD_BIP_CIRCUIT" to Calypso.CARD_BIP_CIRCUIT,
       "EF_ENVIRONMENT_TAX_CODE_INDEX" to Calypso.EF_ENVIRONMENT_TAX_CODE_INDEX,
       "EF_ENVIRONMENT_TAX_CODE_LENGTH" to Calypso.EF_ENVIRONMENT_TAX_CODE_LENGTH,
+      "CARD_EMISSION_TIME_LENGTH_IN_BYTES" to Calypso.CARD_EMISSION_TIME_LENGTH_IN_BYTES,
     )
 
   @ReactMethod
+  @OptIn(DelicateCoroutinesApi::class)
   fun init(promise: Promise) {
-    device = if (isFamoco) {
-      Famoco(reactApplicationContext)
-    } else {
-      Telpo(reactApplicationContext)
+    GlobalScope.launch {
+      device = if (isFamoco) {
+        Famoco(reactApplicationContext)
+      } else {
+        Telpo(reactApplicationContext)
+      }
+      device.init(promise)
     }
-    device.init(promise)
   }
 
   @ReactMethod
+  @OptIn(DelicateCoroutinesApi::class)
   fun writeToCard(apdu: ReadableArray, promise: Promise) {
-    device.writeToCard(apdu, promise)
+    GlobalScope.launch {
+      device.writeToCard(apdu, promise)
+    }
   }
 
   @ReactMethod
+  @OptIn(DelicateCoroutinesApi::class)
   fun readRecordsFromCard(promise: Promise) {
-    device.readRecordsFromCard(promise)
+    GlobalScope.launch {
+      device.readRecordsFromCard(promise)
+    }
   }
 
   companion object {

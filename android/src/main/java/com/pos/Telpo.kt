@@ -21,7 +21,7 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
 
   private val isoDep: IsoDep? = null
 
-  override fun open() {
+  fun open() {
     try {
       samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM2)
       samReader.open()
@@ -41,17 +41,13 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     }
   }
 
-  override fun init(promise: Promise) {
+  override suspend fun init(promise: Promise) {
     this.promise = promise;
     open()
   }
 
-  override fun initialized(status: Boolean) {
+  fun initialized(status: Boolean) {
     if (status) {
-      val challengeApdu = getChallengeApdu()
-      val response = transmitToSam(challengeApdu)
-
-      // TODO: check if the response is ok
       promise?.resolve(true)
       promise = null
 
@@ -62,7 +58,7 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     }
   }
 
-  override fun writeToCard(apdu: ReadableArray, promise: Promise) {
+  override suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
     if (this.promise == null) {
       this.apdu = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
       this.promise = promise;
@@ -74,7 +70,7 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     }
   }
 
-  override fun readRecordsFromCard(promise: Promise){
+  override suspend fun readRecordsFromCard(promise: Promise){
     val readRecordsBuilder = CardReadRecordsBuilder(
       Calypso.SFI_EF_ENVIRONMENT, 1,
       CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0)
@@ -100,12 +96,6 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     }
   }
 
-  override fun getChallengeApdu(): ByteArray {
-    val samGetChallengeBuilder = SamGetChallengeBuilder(Calypso.SAM_CHALLENGE_LENGTH_BYTES)
-    val apdu = samGetChallengeBuilder.apdu
-    return apdu
-  }
-
   override fun transmitToSam(apdu: ByteArray): ByteArray? {
     return try {
       val response = samReader.transmit(apdu)
@@ -129,7 +119,7 @@ class Telpo(private val reactContext: ReactApplicationContext): com.pos.Card() {
     return null
   }
 
-  override fun close(): Boolean {
+  fun close(): Boolean {
     return try {
       samReader.close()
       true
