@@ -11,5 +11,6 @@ class PosException(val code: Int, override val message: String) : Exception(mess
     val CARD_NOT_PRESENT = 101
     val TRANSMIT_APDU_COMMAND = 102
     val PENDING_REQUEST = 103
+    val SAM_CONNECT_FAIL = 104
   }
 }
