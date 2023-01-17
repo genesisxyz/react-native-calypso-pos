@@ -17,7 +17,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.IOException
 
-class Telpo(private val reactContext: ReactApplicationContext): Card(), LifecycleEventListener {
+class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), LifecycleEventListener {
 
   private lateinit var samReader: SmartCardReader
   private lateinit var samId: String
@@ -25,7 +25,7 @@ class Telpo(private val reactContext: ReactApplicationContext): Card(), Lifecycl
 
   private var nfcAdapter: NfcAdapter? = null
 
-  private val baseActivityEventListener = object:BaseActivityEventListener() {
+  private val baseActivityEventListener = object : BaseActivityEventListener() {
     override fun onNewIntent(intent: Intent?) {
       super.onNewIntent(intent)
       if (NfcAdapter.ACTION_TECH_DISCOVERED == intent?.action) {
@@ -95,7 +95,7 @@ class Telpo(private val reactContext: ReactApplicationContext): Card(), Lifecycl
   private var job: Job? = null
 
   override suspend fun readRecordsFromCard(promise: Promise) {
-    job = GlobalScope.launch(start=CoroutineStart.LAZY) {
+    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
 
       try {
         connectCard()
@@ -153,7 +153,7 @@ class Telpo(private val reactContext: ReactApplicationContext): Card(), Lifecycl
   }
 
   override suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
-    job = GlobalScope.launch(start=CoroutineStart.LAZY) {
+    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
       super.writeToCard(apdu, promise)
     }
   }
@@ -188,7 +188,7 @@ class Telpo(private val reactContext: ReactApplicationContext): Card(), Lifecycl
     return try {
       val response = samReader.transmit(apdu)
       response
-    } catch (e: NullPointerException){
+    } catch (e: NullPointerException) {
       null
     }
   }

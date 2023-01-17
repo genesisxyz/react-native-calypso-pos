@@ -5,7 +5,7 @@ import com.facebook.react.bridge.ReadableArray
 import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
 
-abstract class Card {
+abstract class CardManager {
   abstract suspend fun init(promise: Promise)
 
   protected abstract fun transmitToSam(apdu: ByteArray): ByteArray?

@@ -9,7 +9,7 @@ import kotlinx.coroutines.*
 
 class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
-  private lateinit var device: Card
+  private lateinit var device: CardManager
 
   private val isFamoco = Build.MANUFACTURER.equals("wizarPOS")
 

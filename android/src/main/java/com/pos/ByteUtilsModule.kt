@@ -15,7 +15,7 @@ class ByteUtilsModule(reactContext: ReactApplicationContext) :
 
   @ReactMethod
   fun stringToByteArray(str: String, promise: Promise) {
-    val bytes =  ByteConvertStringUtil.stringToByteArray(str)
+    val bytes = ByteConvertStringUtil.stringToByteArray(str)
     promise.resolve(ByteConvertReactNativeUtil.byteArrayToReadableArray(bytes))
   }
 

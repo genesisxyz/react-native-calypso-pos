@@ -29,28 +29,27 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
     try {
       val status = printer.checkStatus()
       promise.resolve(status)
-    }
-    catch (e: TelpoException){
+    } catch (e: TelpoException) {
       promise.resolve(UsbThermalPrinter.STATUS_UNKNOWN)
     }
   }
 
   @ReactMethod
   fun open(promise: Promise) {
-    if(isFamoco){
+    if (isFamoco) {
       printerDevice = POSTerminal.getInstance(reactApplicationContext).getDevice("cloudpos.device.printer") as PrinterDevice
       try {
         printerDevice.open()
         promise.resolve(true)
-      }catch (e: DeviceException){
+      } catch (e: DeviceException) {
         e.printStackTrace()
         promise.resolve(e.code == -1)
       }
-    }else {
+    } else {
       try {
         printer.start(0)
         promise.resolve(true)
-      }catch (e: TelpoException){
+      } catch (e: TelpoException) {
         promise.resolve(false)
       }
     }
@@ -59,7 +58,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun setGrey(level: Double) {
     if (isFamoco) {
-    }else{
+    } else {
       printer.setGray(level.toInt())
     }
   }
@@ -67,7 +66,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun setLineSpace(lineSpace: Double) {
     if (isFamoco) {
-    }else {
+    } else {
       printer.setLineSpace(lineSpace.toInt())
     }
   }
@@ -75,7 +74,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun setBold(isBold: Boolean) {
     if (isFamoco) {
-    }else {
+    } else {
       printer.setBold(isBold)
     }
   }
@@ -83,7 +82,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun setAlgin(mode: Double) {
     if (isFamoco) {
-    }else {
+    } else {
       printer.setAlgin(mode.toInt())
     }
   }
@@ -91,7 +90,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun setTextSize(size: Double) {
     if (isFamoco) {
-    }else {
+    } else {
       printer.setTextSize(size.toInt())
     }
   }
@@ -99,7 +98,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun addString(content: String) {
     if (isFamoco) {
-    }else {
+    } else {
       printer.addString(content)
     }
   }
@@ -107,7 +106,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun printString() {
     if (isFamoco) {
-    }else {
+    } else {
       printer.printString()
     }
   }
@@ -115,7 +114,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun walkPaper(line: Double) {
     if (isFamoco) {
-    }else {
+    } else {
       printer.walkPaper(line.toInt())
     }
   }
@@ -123,7 +122,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   @ReactMethod
   fun printLogo(image: String, isBuffer: Boolean) {
     if (isFamoco) {
-    }else {
+    } else {
       val imageBytes = Base64.decode(image, 0)
       val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
       printer.printLogo(bitmap, isBuffer)
@@ -131,7 +130,7 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
-  fun printHTML(){
+  fun printHTML() {
   }
 
   @ReactMethod
@@ -140,10 +139,10 @@ class PosPrinterModule(reactContext: ReactApplicationContext) :
       try {
         printerDevice.close()
         promise.resolve(true)
-      }catch (e: DeviceException){
+      } catch (e: DeviceException) {
         promise.resolve(false)
       }
-    }else {
+    } else {
       printer.stop()
       promise.resolve(true)
     }

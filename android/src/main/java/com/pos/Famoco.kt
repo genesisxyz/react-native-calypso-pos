@@ -18,7 +18,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() {
+class Famoco(private val reactContext: ReactApplicationContext) : CardManager() {
   private lateinit var samId: String
   private lateinit var samCard: Card
   private lateinit var rfCard: Card
@@ -184,7 +184,7 @@ class Famoco(private val reactContext: ReactApplicationContext): com.pos.Card() 
         throw e
       }
     } finally {
-        closeSamReader()
+      closeSamReader()
     }
   }
 
