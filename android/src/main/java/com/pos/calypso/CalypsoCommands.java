@@ -1,6 +1,6 @@
 package com.pos.calypso;
 
-import com.pos.byte_stuff.ByteConvertStringUtil;
+import com.pos.byteUtils.ByteConvertStringUtil;
 
 import java.util.Locale;
 

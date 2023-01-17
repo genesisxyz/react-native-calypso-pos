@@ -2,7 +2,7 @@ package com.pos
 
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableArray
-import com.pos.byte_stuff.ByteConvertStringUtil
+import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
 
 abstract class Card {

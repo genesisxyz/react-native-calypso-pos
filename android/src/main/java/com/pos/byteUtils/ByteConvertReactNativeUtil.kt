@@ -1,4 +1,4 @@
-package com.pos.byte_stuff
+package com.pos.byteUtils
 
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.ReadableArray

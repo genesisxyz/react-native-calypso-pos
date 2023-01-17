@@ -11,8 +11,8 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
-import com.pos.byte_stuff.ByteConvertReactNativeUtil
-import com.pos.byte_stuff.ByteConvertStringUtil
+import com.pos.byteUtils.ByteConvertReactNativeUtil
+import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume

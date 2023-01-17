@@ -8,9 +8,8 @@ import android.nfc.Tag
 import android.nfc.tech.IsoDep
 import com.cloudpos.DeviceException
 import com.facebook.react.bridge.*
-import com.pos.byte_stuff.ByteConvertReactNativeUtil
+import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.calypso.*
-import com.telpo.tps550.api.TelpoException
 import com.telpo.tps550.api.reader.SmartCardReader
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.GlobalScope

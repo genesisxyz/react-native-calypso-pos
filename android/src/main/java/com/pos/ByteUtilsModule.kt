@@ -1,8 +1,8 @@
 package com.pos
 
 import com.facebook.react.bridge.*
-import com.pos.byte_stuff.ByteConvertReactNativeUtil
-import com.pos.byte_stuff.ByteConvertStringUtil
+import com.pos.byteUtils.ByteConvertReactNativeUtil
+import com.pos.byteUtils.ByteConvertStringUtil
 import java.math.BigInteger
 import java.nio.charset.StandardCharsets
 

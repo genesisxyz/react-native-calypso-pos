@@ -2,7 +2,7 @@ package com.pos
 
 import android.os.Build
 import com.facebook.react.bridge.*
-import com.pos.byte_stuff.ByteConvertReactNativeUtil
+import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.calypso.Calypso
 import kotlinx.coroutines.*
 

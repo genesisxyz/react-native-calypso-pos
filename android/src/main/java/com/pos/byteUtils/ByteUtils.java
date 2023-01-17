@@ -1,4 +1,4 @@
-package com.pos.byte_stuff;
+package com.pos.byteUtils;
 
 import android.os.Build;
 
