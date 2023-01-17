@@ -56,3 +56,14 @@ export async function shiftRight(
 export async function stringFromByteArray(bytes: Uint8Array): Promise<string> {
   return await ByteUtils.stringFromByteArray(bytes);
 }
+
+export function concatArray(array1: Uint8Array, array2: Uint8Array) {
+  let concatenatedArray = new Uint8Array(array1.length + array2.length);
+  concatenatedArray.set(array1, 0);
+  concatenatedArray.set(array2, array1.length);
+  return concatenatedArray;
+}
+
+export function padArrayStart(arr: Uint8Array, len: number) {
+  return concatArray(new Uint8Array(len - arr.length), arr);
+}

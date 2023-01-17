@@ -78,9 +78,10 @@ export class Card {
   record: Uint8Array;
   issueDateBytes: Uint8Array;
 
-  constructor(record: Uint8Array) {
-    this.record = record;
-    this.issueDateBytes = record.slice(
+  constructor(record: Uint8Array | number[]) {
+    const bytes = new Uint8Array(record);
+    this.record = bytes;
+    this.issueDateBytes = bytes.slice(
       CALYPSO.EF_ENVIRONMENT_ISSUE_DATE_INDEX,
       CALYPSO.EF_ENVIRONMENT_ISSUE_DATE_INDEX +
         CALYPSO.EF_ENVIRONMENT_ISSUE_DATE_LENGTH
