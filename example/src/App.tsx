@@ -151,10 +151,18 @@ export default function App() {
   const [isLoadingRead, setIsLoadingRead] = useState(false);
 
   useEffect(() => {
-    PosSam.init().then(() => {
-      setIsInitialized(true);
-    });
-  }, []);
+    if (!isInitialized) {
+      PosSam.init().then(() => {
+        setIsInitialized(true);
+      });
+    }
+
+    return () => {
+      if (isInitialized) {
+        PosSam.close();
+      }
+    };
+  }, [isInitialized]);
 
   const print = async () => {
     setIsLoadingPrint(true);
@@ -174,7 +182,7 @@ export default function App() {
   const write = async () => {
     setIsLoadingWrite(true);
     try {
-      const records = await PosSam.readRecordsFromCard();
+      const { records } = await PosSam.readRecordsFromCard();
       /*
       const records = {
         '1': [
@@ -209,10 +217,10 @@ export default function App() {
   const read = async () => {
     setIsLoadingRead(true);
     try {
-      const records = await PosSam.readRecordsFromCard();
+      const { records, cardId } = await PosSam.readRecordsFromCard();
+      console.warn('CARD ID', cardId);
       for (const key in records) {
         const record = new PosSam.Card(records[key]!);
-
         if (
           record.cardStatus() !== PosSam.CardStatus.Unknown &&
           !(await record.isExpired()) &&

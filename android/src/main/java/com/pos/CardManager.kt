@@ -1,12 +1,21 @@
 package com.pos
 
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReadableArray
+import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
 
 abstract class CardManager {
+  protected lateinit var cardId: String
+
+  protected var samIsConnected = false
+  protected var cardIsConnected = false
+
   abstract suspend fun init(promise: Promise)
+
+  abstract fun close()
 
   protected abstract fun transmitToSam(apdu: ByteArray): ByteArray?
 
@@ -24,12 +33,82 @@ abstract class CardManager {
 
   private val CP_SAM_UNLOCK_STRING: String = "62 EE D0 33 FB 9F D1 85 B3 C7 DA BD 02 82 D6 EC"
 
-  abstract suspend fun readRecordsFromCard(promise: Promise)
+  open suspend fun readRecordsFromCard(promise: Promise) {
+    try {
+      waitForCard()
+      connectCard()
+
+      val selectApplicationBuilder = SelectApplicationBuilder(
+        SelectApplicationBuilder.SELECT_FIRST_OCCURRENCE_RETURN_FCI)
+
+      val selectApplicationResponseAdapter = ApduResponseAdapter(transmitToCard(selectApplicationBuilder.apdu))
+
+      val selectApplicationParser = selectApplicationBuilder.createResponseParser(selectApplicationResponseAdapter)
+
+      selectApplicationParser.checkStatus()
+
+      // TODO is this necessary?
+      /*
+      if (!selectApplicationParser.isBipApplication) {
+        throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
+      }
+      */
+
+      val selectFileBuilder = CardSelectFileBuilder(Calypso.LID_EF_ENVIRONMENT)
+
+      val selectFileResponseAdapter = ApduResponseAdapter(transmitToCard(selectFileBuilder.apdu))
+
+      val selectFileParser = selectFileBuilder
+        .createResponseParser(selectFileResponseAdapter)
+
+      selectFileParser.checkStatus()
+
+      if (!selectFileParser.isSuccess || selectFileParser.proprietaryInformation == null) {
+        throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
+      }
+
+      val readRecordsBuilder = CardReadRecordsBuilder(
+        Calypso.SFI_EF_ENVIRONMENT, 1,
+        CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0)
+
+      val readRecordsResponseAdapter = ApduResponseAdapter(transmitToCard(readRecordsBuilder.apdu))
+
+      val readRecordsParser = readRecordsBuilder.createResponseParser(readRecordsResponseAdapter)
+
+      readRecordsParser.checkStatus()
+
+      val records: Map<Int, ByteArray> = readRecordsParser.records
+
+      val readableMap = Arguments.createMap()
+      val recordsMap = Arguments.createMap()
+
+      for ((key, record) in records) {
+        val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
+        recordsMap.putArray(key.toString(), array)
+      }
+
+      readableMap.putMap("records", recordsMap)
+      readableMap.putString("cardId", cardId)
+
+      promise.resolve(readableMap)
+    } catch (e: Throwable) {
+      e.printStackTrace()
+      promise.reject(
+        when (e) {
+          is PosException -> e
+          is CardCommandException -> PosException(PosException.TRANSMIT_APDU_COMMAND, "Command status failed")
+          else -> PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+        }
+      )
+    } finally {
+      disconnectCard()
+    }
+  }
 
   open suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
     try {
-      waitForCard()
       connectSam()
+      waitForCard()
       connectCard()
 
       val newRecord = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();

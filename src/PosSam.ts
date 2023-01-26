@@ -52,7 +52,14 @@ export async function init(): Promise<boolean> {
   return await PosSam.init();
 }
 
-export async function readRecordsFromCard(): Promise<Record<number, number[]>> {
+export function close() {
+  return PosSam.close();
+}
+
+export async function readRecordsFromCard(): Promise<{
+  records: Record<number, number[]>;
+  cardId: string;
+}> {
   return await PosSam.readRecordsFromCard();
 }
 

@@ -53,6 +53,11 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   }
 
   @ReactMethod
+  fun close() {
+    device.close()
+  }
+
+  @ReactMethod
   @OptIn(DelicateCoroutinesApi::class)
   fun writeToCard(apdu: ReadableArray, promise: Promise) {
     GlobalScope.launch {

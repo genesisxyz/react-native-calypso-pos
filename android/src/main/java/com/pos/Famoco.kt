@@ -43,13 +43,21 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
     famocoSmartCardReaderDevice.listenForCardPresent(listener, TimeConstants.FOREVER)
   }
 
+  private var posIsInitialized = false
+
   override suspend fun init(promise: Promise) {
+    if (posIsInitialized) {
+      promise.resolve(true)
+      return
+    }
+
     try {
       famocoRFCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice("cloudpos.device.rfcardreader") as RFCardReaderDevice
       famocoSmartCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice("cloudpos.device.smartcardreader", famocoSamLogicalID) as SmartCardReaderDevice
 
       openSamReader()
       getSamCard()
+      posIsInitialized = true
       promise.resolve(true)
       closeSamReader()
     } catch (e: Throwable) {
@@ -60,8 +68,6 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
 
   override suspend fun waitForCard() = suspendCancellableCoroutine<Unit> { cont ->
     try {
-      var cardId: String? = null
-
       val operationResult: OperationResult = famocoRFCardReaderDevice.waitForCardPresent(TimeConstants.FOREVER)
       if (operationResult.resultCode == OperationResult.SUCCESS) {
         rfCard = (operationResult as RFCardReaderOperationResult).card
@@ -69,10 +75,7 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
         rfCard.id
         rfCard.cardStatus
         val cardIdHex = ByteConvertStringUtil.bytesToHexString(rfCard.id)
-        if (cardIdHex != null) {
-          cardId =
-            cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
-        }
+        cardId = cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
         cont.resume(Unit)
       } else {
         throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
@@ -92,99 +95,50 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
   override suspend fun readRecordsFromCard(promise: Promise) {
     try {
       openCardReader()
-      waitForCard()
-      connectCard()
-
-      val selectApplicationBuilder = SelectApplicationBuilder(
-        SelectApplicationBuilder.SELECT_FIRST_OCCURRENCE_RETURN_FCI)
-
-      val selectApplicationResponseAdapter = ApduResponseAdapter(transmitToCard(selectApplicationBuilder.apdu))
-
-      val selectApplicationParser = selectApplicationBuilder.createResponseParser(selectApplicationResponseAdapter)
-
-      selectApplicationParser.checkStatus()
-
-      // TODO is this necessary?
-      /*
-      if (!selectApplicationParser.isBipApplication) {
-        throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
-      }
-      */
-
-      val selectFileBuilder = CardSelectFileBuilder(Calypso.LID_EF_ENVIRONMENT)
-
-      val selectFileResponseAdapter = ApduResponseAdapter(transmitToCard(selectFileBuilder.apdu))
-
-      val selectFileParser = selectFileBuilder
-        .createResponseParser(selectFileResponseAdapter)
-
-      selectFileParser.checkStatus()
-
-      if (!selectFileParser.isSuccess || selectFileParser.proprietaryInformation == null) {
-        throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
-      }
-
-      val readRecordsBuilder = CardReadRecordsBuilder(
-        Calypso.SFI_EF_ENVIRONMENT, 1,
-        CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0)
-
-      val readRecordsResponseAdapter = ApduResponseAdapter(transmitToCard(readRecordsBuilder.apdu))
-
-      val readRecordsParser = readRecordsBuilder.createResponseParser(readRecordsResponseAdapter)
-
-      readRecordsParser.checkStatus()
-
-      val records: Map<Int, ByteArray> = readRecordsParser.records
-
-      val readableMap = Arguments.createMap();
-      for ((key, record) in records) {
-        val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
-        readableMap.putArray(key.toString(), array)
-      }
-
-      promise.resolve(readableMap)
-    } catch (e: Throwable) {
-      e.printStackTrace()
-      promise.reject(
-        when (e) {
-          is PosException -> e
-          is CardCommandException -> PosException(PosException.TRANSMIT_APDU_COMMAND, "Command status failed")
-          else -> PosException(PosException.CARD_NOT_PRESENT, "Card not present")
-        }
-      )
-    } finally {
-      disconnectCard()
+      super.readRecordsFromCard(promise)
       closeCardReader()
+    } catch (e: Throwable) {
+      promise.reject(e)
     }
   }
 
   override suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
-    openCardReader()
-    super.writeToCard(apdu, promise)
-    closeCardReader()
-  }
-
-  override fun connectSam() {
-    openSamReader()
     try {
-      (samCard as CPUCard).connect()
-    } catch (e: DeviceException) {
-      e.printStackTrace()
+      openSamReader()
+      openCardReader()
+      super.writeToCard(apdu, promise)
+      closeCardReader()
       closeSamReader()
-      throw e
+    } catch (e: Throwable) {
+      promise.reject(e)
     }
   }
 
-  override fun disconnectSam() {
-    try {
-      (samCard as CPUCard).disconnect()
+  override fun connectSam() {
+    if (samIsConnected) return
+    samIsConnected = try {
+      (samCard as CPUCard).connect()
+      true
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code != -1) {
         throw e
       }
-    } finally {
-      closeSamReader()
+      true
+    }
+  }
+
+  override fun disconnectSam() {
+    if (!samIsConnected) return
+    samIsConnected = try {
+      (samCard as CPUCard).disconnect()
+      false
+    } catch (e: DeviceException) {
+      e.printStackTrace()
+      if (e.code != -1) {
+        throw e
+      }
+      false
     }
   }
 
@@ -197,22 +151,30 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
   }
 
   override fun connectCard() {
-    try {
+    if (cardIsConnected) return
+    cardIsConnected = try {
       (rfCard as CPUCard).connect()
+      true
     } catch (e: DeviceException) {
       e.printStackTrace()
-      throw e
+      if (e.code == -1) {
+        throw e
+      }
+      true
     }
   }
 
   override fun disconnectCard() {
-    try {
+    if (!cardIsConnected) return
+    cardIsConnected = try {
       (rfCard as CPUCard).disconnect()
+      false
     } catch (e: DeviceException) {
       e.printStackTrace()
-      if (e.code != -1) {
+      if (e.code == -1) {
         throw e
       }
+      false
     }
   }
 
@@ -220,49 +182,64 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
     return try {
       (rfCard as CPUCard).transmit(apdu)
     } catch (e: Exception) {
+      e.printStackTrace()
       throw PosException(PosException.TRANSMIT_APDU_COMMAND, "Transmit apdu command error")
     }
   }
 
   private fun openSamReader() {
-    try {
+    if (samReaderIsConnected) return
+    samReaderIsConnected = try {
       famocoSmartCardReaderDevice.open(famocoSamLogicalID)
+      true
     } catch (e: DeviceException) {
+      e.printStackTrace()
       if (e.code == -1) {
         throw e
       }
+      true
     }
   }
 
   private fun closeSamReader() {
-    try {
+    if (!samReaderIsConnected) return
+    samReaderIsConnected = try {
       famocoSmartCardReaderDevice.close()
+      false
     } catch (e: DeviceException) {
+      e.printStackTrace()
       if (e.code == -1) {
         throw e
       }
+      false
     }
   }
 
   private fun openCardReader() {
-    try {
+    if (cardReaderIsConnected) return
+    cardReaderIsConnected = try {
       famocoRFCardReaderDevice.open()
+      true
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
         throw e
       }
+      true
     }
   }
 
   private fun closeCardReader() {
-    try {
+    if (!cardReaderIsConnected) return
+    cardReaderIsConnected = try {
       famocoRFCardReaderDevice.close()
+      false
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
         throw e
       }
+      false
     }
   }
 
@@ -274,6 +251,20 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
       if (e.code == -1) {
         throw e
       }
+    }
+  }
+
+  private var samReaderIsConnected = false
+  private var cardReaderIsConnected = false
+
+  override fun close() {
+    try {
+      disconnectCard()
+      closeCardReader()
+      disconnectSam()
+      closeSamReader()
+    } catch (e: Exception) {
+      e.printStackTrace()
     }
   }
 }

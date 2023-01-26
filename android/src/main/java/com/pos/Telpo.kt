@@ -6,22 +6,20 @@ import android.content.IntentFilter
 import android.nfc.NfcAdapter
 import android.nfc.Tag
 import android.nfc.tech.IsoDep
+import android.os.Build
 import com.cloudpos.DeviceException
 import com.facebook.react.bridge.*
-import com.pos.byteUtils.ByteConvertReactNativeUtil
+import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
 import com.telpo.tps550.api.reader.SmartCardReader
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import java.io.IOException
 
 class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), LifecycleEventListener {
 
   private lateinit var samReader: SmartCardReader
   private lateinit var samId: String
-  private lateinit var isoDep: IsoDep
+  private var isoDep: IsoDep? = null
 
   private var nfcAdapter: NfcAdapter? = null
 
@@ -30,11 +28,20 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
       super.onNewIntent(intent)
       if (NfcAdapter.ACTION_TECH_DISCOVERED == intent?.action) {
         val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
-        isoDep = IsoDep.get(tag)
+        if (tag != null && (isoDep == null || !isoDep!!.isConnected)) {
+          isoDep = IsoDep.get(tag)
+          isoDep!!.timeout = 5000 // 5 seconds
 
-        if (job != null) {
-          job?.start()
-          job = null
+          val cardIdHex = ByteConvertStringUtil.bytesToHexString(tag.id)
+          cardId = cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
+
+          if (job != null) {
+            job?.start()
+            job = null
+          }
+        } else {
+          // TODO: to be tested
+          job?.cancel("error", PosException(PosException.CARD_NOT_PRESENT, "Can't read card tag"))
         }
       }
     }
@@ -78,17 +85,24 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
     reactContext.addLifecycleEventListener(this)
   }
 
+  private var posIsInitialized = false
+
   override suspend fun init(promise: Promise) {
+    if (posIsInitialized) {
+      promise.resolve(true)
+      return
+    }
+
     // TODO: check SAM slot
     samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM1)
 
     try {
       connectSam()
+      posIsInitialized = true
       promise.resolve(true)
+      disconnectSam()
     } catch (e: Throwable) {
       promise.resolve(false)
-    } finally {
-      disconnectSam()
     }
   }
 
@@ -96,59 +110,7 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
 
   override suspend fun readRecordsFromCard(promise: Promise) {
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-
-      try {
-        connectCard()
-
-        val selectApplicationBuilder = SelectApplicationBuilder(
-          SelectApplicationBuilder.SELECT_FIRST_OCCURRENCE_RETURN_FCI)
-
-        val selectApplicationResponseAdapter = ApduResponseAdapter(
-          transmitToCard(selectApplicationBuilder.apdu))
-
-        val selectApplicationParser = selectApplicationBuilder
-          .createResponseParser(selectApplicationResponseAdapter)
-
-        selectApplicationParser.checkStatus()
-
-        val selectFileBuilder = CardSelectFileBuilder(Calypso.LID_EF_ENVIRONMENT)
-
-        val selectFileResponseAdapter = ApduResponseAdapter(transmitToCard(selectFileBuilder.apdu))
-
-        val selectFileParser = selectFileBuilder
-          .createResponseParser(selectFileResponseAdapter)
-
-        selectFileParser.checkStatus()
-
-        if (!selectFileParser.isSuccess || selectFileParser.proprietaryInformation == null) {
-          throw PosException(PosException.CARD_NOT_SUPPORTED, "Card not supported")
-        }
-
-        val readRecordsBuilder = CardReadRecordsBuilder(
-          Calypso.SFI_EF_ENVIRONMENT, 1,
-          CardReadRecordsBuilder.ReadMode.ONE_RECORD, 0
-        )
-
-        val readRecordsResponseAdapter = ApduResponseAdapter(transmitToCard(readRecordsBuilder.apdu))
-
-        val readRecordsParser = readRecordsBuilder.createResponseParser(readRecordsResponseAdapter)
-
-        readRecordsParser.checkStatus()
-
-        val records: Map<Int, ByteArray> = readRecordsParser.records
-
-        val readableMap = Arguments.createMap()
-        for ((key, record) in records) {
-          val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
-          readableMap.putArray(key.toString(), array)
-        }
-
-        disconnectCard()
-
-        promise.resolve(readableMap)
-      } catch (e: Exception) {
-        promise.reject(e)
-      }
+      super.readRecordsFromCard(promise)
     }
   }
 
@@ -159,24 +121,36 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
   }
 
   override fun connectCard() {
-    try {
-      isoDep.connect()
+    if (cardIsConnected) return
+    cardIsConnected = try {
+      isoDep?.connect()
+      true
     } catch (e: DeviceException) {
       e.printStackTrace()
-      if (e.code != -1) {
+      if (e.code == -1) {
         throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
       }
+      true
     }
   }
 
   override fun disconnectCard() {
-    try {
-      isoDep.close()
+    if (!cardIsConnected) return
+    cardIsConnected = try {
+      isoDep?.run {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+          NfcAdapter.getDefaultAdapter(reactContext).ignore(this.tag, 1000, null, null)
+        }
+        this.close()
+      }
+      isoDep = null
+      false
     } catch (e: DeviceException) {
       e.printStackTrace()
-      if (e.code != -1) {
+      if (e.code == -1) {
         throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
       }
+      false
     }
   }
 
@@ -194,21 +168,20 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
   }
 
   override fun transmitToCard(apdu: ByteArray): ByteArray? {
-    if (isoDep.isConnected) {
-      for (i in 0..9) {
-        try {
-          val received = isoDep.transceive(apdu)
-          if (received != null)
-            return received
-        } catch (e: IOException) {
-          e.printStackTrace()
-        }
+    if (isoDep?.isConnected == true) {
+      try {
+        val received = isoDep?.transceive(apdu)
+        if (received != null)
+          return received
+      } catch (e: IOException) {
+        e.printStackTrace()
       }
     }
     return null
   }
 
   override fun connectSam() {
+    if (samIsConnected) return
     // TODO: manage return of open and iccPowerOn
     val isOpen = samReader.open()
     val isIccPowerOn = samReader.iccPowerOn()
@@ -216,9 +189,23 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
     if (!isOpen || !isIccPowerOn) {
       throw PosException(PosException.SAM_CONNECT_FAIL, "Cannot connect to SAM")
     }
+    samIsConnected = true
   }
 
   override fun disconnectSam() {
+    if (!samIsConnected) return
+    samReader.iccPowerOff()
     samReader.close()
+    samIsConnected = false
+  }
+
+  override fun close() {
+    try {
+      job?.cancel("message", PosException(PosException.PENDING_REQUEST, "Close called"))
+      disconnectCard()
+      disconnectSam()
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
   }
 }

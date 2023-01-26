@@ -54,7 +54,7 @@ export async function shiftRight(
 }
 
 export async function stringFromByteArray(bytes: Uint8Array): Promise<string> {
-  return await ByteUtils.stringFromByteArray(bytes);
+  return await ByteUtils.stringFromByteArray(Array.from(bytes));
 }
 
 export function concatArray(array1: Uint8Array, array2: Uint8Array) {
