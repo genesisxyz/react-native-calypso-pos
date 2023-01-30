@@ -7,13 +7,10 @@ import com.cloudpos.rfcardreader.RFCardReaderDevice
 import com.cloudpos.rfcardreader.RFCardReaderOperationResult
 import com.cloudpos.smartcardreader.SmartCardReaderDevice
 import com.cloudpos.smartcardreader.SmartCardReaderOperationResult
-import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
-import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.byteUtils.ByteConvertStringUtil
-import com.pos.calypso.*
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -52,9 +49,15 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
     }
 
     try {
-      famocoRFCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice("cloudpos.device.rfcardreader") as RFCardReaderDevice
-      famocoSmartCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice("cloudpos.device.smartcardreader", famocoSamLogicalID) as SmartCardReaderDevice
+      famocoRFCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice(POSTerminal.DEVICE_NAME_RF_CARD_READER) as RFCardReaderDevice
+      famocoSmartCardReaderDevice = POSTerminal.getInstance(reactContext).getDevice(POSTerminal.DEVICE_NAME_SMARTCARD_READER, famocoSamLogicalID) as SmartCardReaderDevice
 
+      // close if for some reason the sam reader is already open
+      try {
+        famocoRFCardReaderDevice.close()
+      } catch (e: DeviceException) {
+        e.printStackTrace()
+      }
       openSamReader()
       getSamCard()
       posIsInitialized = true
@@ -259,9 +262,11 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
 
   override fun close() {
     try {
-      disconnectCard()
       closeCardReader()
-      disconnectSam()
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
+    try {
       closeSamReader()
     } catch (e: Exception) {
       e.printStackTrace()
