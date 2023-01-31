@@ -76,8 +76,8 @@ export function printLogo(image: string, isBuffer: boolean = false) {
   PosPrinter.printLogo(image, isBuffer);
 }
 
-export function printHTML() {
-  PosPrinter.printHTML;
+export async function printHTML(html: string): Promise<boolean> {
+  return await PosPrinter.printHTML(html);
 }
 
 export async function close(): Promise<boolean> {
