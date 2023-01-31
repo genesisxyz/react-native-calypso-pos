@@ -7,6 +7,7 @@ import com.cloudpos.rfcardreader.RFCardReaderDevice
 import com.cloudpos.rfcardreader.RFCardReaderOperationResult
 import com.cloudpos.smartcardreader.SmartCardReaderDevice
 import com.cloudpos.smartcardreader.SmartCardReaderOperationResult
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
@@ -79,6 +80,12 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
         rfCard.cardStatus
         val cardIdHex = ByteConvertStringUtil.bytesToHexString(rfCard.id)
         cardId = cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
+
+        val params = Arguments.createMap().apply {
+          putString("status", "detected")
+        }
+        sendEvent(reactContext, "CardStatus", params)
+
         cont.resume(Unit)
       } else {
         throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")

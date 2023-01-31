@@ -1,8 +1,7 @@
 package com.pos
 
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
@@ -30,6 +29,12 @@ abstract class CardManager {
   protected abstract fun disconnectCard()
 
   protected abstract suspend fun waitForCard()
+
+  protected fun sendEvent(reactContext: ReactContext, eventName: String, params: WritableMap?) {
+    reactContext
+      .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+      .emit(eventName, params)
+  }
 
   private val CP_SAM_UNLOCK_STRING: String = "62 EE D0 33 FB 9F D1 85 B3 C7 DA BD 02 82 D6 EC"
 

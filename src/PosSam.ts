@@ -1,4 +1,4 @@
-import { NativeModules, Platform } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import { ByteUtils } from './index';
 
 const LINKING_ERROR =
@@ -67,6 +67,13 @@ export async function writeToCard(adpu: Uint8Array): Promise<void> {
   return await PosSam.writeToCard(Array.from(adpu));
 }
 
+export function addCardStatusListener(
+  listener: (event: { status: 'detected' }) => void
+) {
+  const eventEmitter = new NativeEventEmitter();
+  return eventEmitter.addListener('CardStatus', listener);
+}
+
 function bitwiseAnd(array1: Uint8Array, array2: Uint8Array) {
   if (array1.length !== array2.length) return null;
   return array1.map((e, i) => {
@@ -76,9 +83,9 @@ function bitwiseAnd(array1: Uint8Array, array2: Uint8Array) {
 }
 
 export enum CardStatus {
-  Personalized,
-  PrePersonalized,
   Unknown,
+  PrePersonalized,
+  Personalized,
 }
 
 export class Card {

@@ -157,10 +157,13 @@ export default function App() {
       });
     }
 
+    const cardStatusListener = PosSam.addCardStatusListener((event) => {
+      console.log(event.status);
+    });
+
     return () => {
-      if (isInitialized) {
-        PosSam.close();
-      }
+      cardStatusListener?.remove();
+      PosSam.close();
     };
   }, [isInitialized]);
 

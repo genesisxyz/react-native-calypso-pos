@@ -9,8 +9,8 @@ import android.nfc.tech.IsoDep
 import android.os.Build
 import com.cloudpos.DeviceException
 import com.facebook.react.bridge.*
+import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.pos.byteUtils.ByteConvertStringUtil
-import com.pos.calypso.*
 import com.telpo.tps550.api.reader.SmartCardReader
 import kotlinx.coroutines.*
 import java.io.IOException
@@ -36,6 +36,10 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
           cardId = cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
 
           if (job != null) {
+            val params = Arguments.createMap().apply {
+              putString("status", "detected")
+            }
+            sendEvent(reactContext, "CardStatus", params)
             job?.start()
             job = null
           }
