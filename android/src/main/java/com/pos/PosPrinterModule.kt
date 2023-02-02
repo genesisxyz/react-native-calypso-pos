@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Handler
-import android.os.Looper
 import android.util.Base64
 import com.cloudpos.DeviceException
 import com.cloudpos.POSTerminal
@@ -17,7 +16,6 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.telpo.tps550.api.TelpoException
 import com.telpo.tps550.api.printer.UsbThermalPrinter
-import java.util.*
 
 
 class PosPrinterModule(reactContext: ReactApplicationContext) :

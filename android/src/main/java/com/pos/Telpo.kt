@@ -11,6 +11,7 @@ import com.cloudpos.DeviceException
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.pos.byteUtils.ByteConvertStringUtil
+import com.pos.calypso.CardReadRecordsBuilder
 import com.telpo.tps550.api.reader.SmartCardReader
 import kotlinx.coroutines.*
 import java.io.IOException
@@ -112,15 +113,15 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
 
   private var job: Job? = null
 
-  override suspend fun readRecordsFromCard(promise: Promise) {
+  override suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-      super.readRecordsFromCard(promise)
+      super.readRecordsFromCard(options, promise)
     }
   }
 
-  override suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
+  override suspend fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-      super.writeToCard(apdu, promise)
+      super.writeToCardUpdate(apdu, options, promise)
     }
   }
 

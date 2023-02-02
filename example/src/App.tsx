@@ -1,42 +1,31 @@
 import * as React from 'react';
+import { useEffect, useState } from 'react';
 
 import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
   ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import { useEffect, useState } from 'react';
-import { ByteUtils, PosPrinter, PosSam } from 'react-native-pos';
+import { PosPrinter, PosSam } from 'react-native-pos';
 
 import data from './data.json';
-import { parse } from 'date-fns';
+import { format } from 'date-fns';
+import { EFEnvironmentRecord } from './BIP/EFEnvironmentRecord';
 
 enum Profile {
-  Ordinary = '70 0',
-  Over65 = '70 2',
-  Under25 = '70 0',
-  Student = '70 1',
+  Ordinary = '700',
+  Over65 = '702',
+  Under25 = '700',
+  Student = '701',
 }
 
-async function dataString(card: PosSam.Card) {
-  const idToHex = Number(data.id).toString(16);
-  const tempUserCodeBytes = await ByteUtils.stringToByteArray(idToHex);
-
-  if (!tempUserCodeBytes) return null;
-
-  const userCodeBytes = ByteUtils.padArrayStart(tempUserCodeBytes, 4);
-
-  const userCode = await ByteUtils.bytesToHexString(userCodeBytes);
-
-  const lastUserData = data;
-  const onlineUserProfile = lastUserData.profile_type;
-
+function dataToEnvironmentRecord(user: typeof data) {
   let userProfile = Profile.Ordinary;
 
-  if (onlineUserProfile) {
-    switch (onlineUserProfile.toLowerCase()) {
+  if (user.profile_type) {
+    switch (user.profile_type) {
       case '65':
         userProfile = Profile.Over65;
         break;
@@ -49,99 +38,17 @@ async function dataString(card: PosSam.Card) {
     }
   }
 
-  let expiration =
-    lastUserData.expiration_months === -1
-      ? '00'
-      : Number(lastUserData.expiration_months).toString(16).padStart(2, '0');
+  const environmentRecord = EFEnvironmentRecord.fromData({
+    dataFormat: EFEnvironmentRecord.CardDataFormat.BIPv3_1,
+    agencyCode: '05',
+    userCode: user.id,
+    userProfile,
+    cardStatus: EFEnvironmentRecord.CardStatus.Personalized,
+    taxCode: data.fiscal_code.toUpperCase(),
+    cardCircuit: EFEnvironmentRecord.CardCircuit.BIP,
+  });
 
-  expiration = expiration.split('').join(' ');
-
-  const status = '2';
-
-  // preparing tax code to write
-  const taxCode = data.fiscal_code.toUpperCase();
-
-  const taxCodeBytes = await ByteUtils.bytesFromString(taxCode);
-
-  if (!taxCodeBytes) return null;
-
-  // preparing emission time
-  let emissionTimeOnesComplement = card.issueDateBytes;
-
-  if (!emissionTimeOnesComplement) {
-    const emissionTimeMillis = parse(
-      data.initialized_time,
-      'yyyy-MM-dd HH:mm:ss',
-      new Date()
-    ).getTime();
-
-    const emissionTimeFromZeroTimeMillis =
-      emissionTimeMillis - PosSam.CALYPSO.ZERO_TIME_MILLIS;
-
-    const emissionTimeFromZeroTimeMinutes = Math.floor(
-      emissionTimeFromZeroTimeMillis / (60 * 1000)
-    );
-
-    // using a temp value since its length could be different from requested one
-    const tempEmissionTimeFromZeroTimeMinutesBytes =
-      await ByteUtils.bytesFromString(String(emissionTimeFromZeroTimeMinutes));
-
-    if (!tempEmissionTimeFromZeroTimeMinutesBytes) return null;
-
-    let emissionTimeFromZeroTimeMinutesBytes = new Uint8Array([
-      PosSam.CALYPSO.CARD_EMISSION_TIME_LENGTH_IN_BYTES,
-    ]);
-
-    const emissionTimeInBytesLength =
-      tempEmissionTimeFromZeroTimeMinutesBytes.length;
-
-    // if length of emission time in bytes in greater than required one,
-    // take only useful bytes
-    if (
-      emissionTimeInBytesLength ===
-      PosSam.CALYPSO.CARD_EMISSION_TIME_LENGTH_IN_BYTES
-    ) {
-      emissionTimeFromZeroTimeMinutesBytes =
-        tempEmissionTimeFromZeroTimeMinutesBytes.slice(
-          0,
-          PosSam.CALYPSO.CARD_EMISSION_TIME_LENGTH_IN_BYTES
-        );
-    } else {
-      emissionTimeFromZeroTimeMinutesBytes =
-        tempEmissionTimeFromZeroTimeMinutesBytes.slice(
-          emissionTimeInBytesLength -
-            PosSam.CALYPSO.CARD_EMISSION_TIME_LENGTH_IN_BYTES,
-          PosSam.CALYPSO.CARD_EMISSION_TIME_LENGTH_IN_BYTES
-        );
-    }
-
-    emissionTimeOnesComplement = emissionTimeFromZeroTimeMinutesBytes;
-  }
-
-  // putting data to write together
-  let newRecordDataBuilder = '';
-  newRecordDataBuilder +=
-    (await ByteUtils.byteToHexString(PosSam.CALYPSO.CARD_DATA_FORMAT)) + ' ';
-  const bip_agency_code = '05';
-  newRecordDataBuilder += bip_agency_code + ' ';
-  newRecordDataBuilder += userCode! + ' ';
-  newRecordDataBuilder += userProfile;
-  newRecordDataBuilder += expiration;
-  newRecordDataBuilder += status + ' ';
-  newRecordDataBuilder +=
-    (await ByteUtils.bytesToHexString(emissionTimeOnesComplement)) + ' ';
-  newRecordDataBuilder +=
-    (await ByteUtils.bytesToHexString(taxCodeBytes)) + ' ';
-  newRecordDataBuilder += await ByteUtils.byteToHexString(
-    PosSam.CALYPSO.CARD_BIP_CIRCUIT
-  );
-
-  // converting data to write in bytes
-  const newRecordDataBytes = await ByteUtils.makeByteArrayFromString(
-    newRecordDataBuilder
-  );
-
-  return newRecordDataBytes;
+  return environmentRecord;
 }
 
 export default function App() {
@@ -197,32 +104,26 @@ export default function App() {
   const write = async () => {
     setIsLoadingWrite(true);
     try {
-      const { records } = await PosSam.readRecordsFromCard();
-      /*
-      const records = {
-        '1': [
-          5, 5, 0, 0, 0, 85, 112, 39, -126, -112, 23, 115, 84, 83, 84, 84, 83,
-          84, 53, 54, 68, 52, 54, 76, 50, 49, 57, 71, -64,
-        ],
-      };
-      */
-      let record: PosSam.Card;
-      for (const key in records) {
-        record = new PosSam.Card(records[key]!);
+      const environmentRecord = dataToEnvironmentRecord(data);
 
-        if (
-          record.cardStatus() !== PosSam.CardStatus.Unknown &&
-          !(await record.isExpired()) &&
-          record.isDataFormatValid() &&
-          record.isBIPCircuit() &&
-          data.initialized_time
-        ) {
-          const newRecord = await dataString(record);
-          if (newRecord) {
-            await PosSam.writeToCard(newRecord);
-          }
-        }
-      }
+      console.warn({
+        emissionDate: format(
+          new Date(environmentRecord.emissionDate),
+          'dd/MM/yyyy HH:mm'
+        ),
+        isExpired: environmentRecord.isExpired,
+        taxCode: environmentRecord.taxCode,
+        circuitIsBIP: environmentRecord.circuitIsBIP,
+        expirationInMonths: environmentRecord.expirationInMonths,
+        dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
+      });
+
+      await PosSam.writeToCardUpdate(environmentRecord.record, {
+        application: EFEnvironmentRecord.AID,
+        sfi: EFEnvironmentRecord.SFI,
+        offset: 1,
+        samUnlockString: '62 EE D0 33 FB 9F D1 85 B3 C7 DA BD 02 82 D6 EC',
+      });
     } catch (e) {
       console.warn(e);
     }
@@ -232,18 +133,31 @@ export default function App() {
   const read = async () => {
     setIsLoadingRead(true);
     try {
-      const { records, cardId } = await PosSam.readRecordsFromCard();
-      console.warn('CARD ID', cardId);
+      const { records, cardId } = await PosSam.readRecordsFromCard({
+        application: EFEnvironmentRecord.AID,
+        sfi: EFEnvironmentRecord.SFI,
+        offset: 1,
+        readMode: 1,
+      });
       for (const key in records) {
-        const record = new PosSam.Card(records[key]!);
-        if (
-          record.cardStatus() !== PosSam.CardStatus.Unknown &&
-          !(await record.isExpired()) &&
-          record.isDataFormatValid() &&
-          record.isBIPCircuit()
-        ) {
-          const taxCode = await record.taxCode();
-          console.warn('TAX CODE', taxCode);
+        if (Object.prototype.hasOwnProperty.call(records, key)) {
+          const record = records[key]!;
+
+          const environmentRecord = new EFEnvironmentRecord(record);
+
+          console.warn({
+            cardId,
+            emissionDate: format(
+              new Date(environmentRecord.emissionDate),
+              'dd/MM/yyyy HH:mm'
+            ),
+            isExpired: environmentRecord.isExpired,
+            taxCode: environmentRecord.taxCode,
+            circuitIsBIP: environmentRecord.circuitIsBIP,
+            expirationInMonths: environmentRecord.expirationInMonths,
+            dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
+          });
+          console.warn(environmentRecord.record);
         }
       }
     } catch (e) {

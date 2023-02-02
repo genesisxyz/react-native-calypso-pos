@@ -22,25 +22,29 @@ public class SelectApplicationBuilder extends AbstractCardCommandBuilder<SelectA
     private static final CalypsoCardCommand command = CalypsoCardCommand.SELECT_APPLICATION;
 
     public SelectApplicationBuilder(@SelectMode int selectMode) {
-        super(command);
+        this(selectMode, Calypso.AID);
+    }
 
-        byte cla = (byte) 0x00;
-        byte p1 = (byte) 0x04;
-        byte p2;
+    public SelectApplicationBuilder(@SelectMode int selectMode, byte[] datain) {
+      super(command);
 
-        if(selectMode == SELECT_FIRST_OCCURRENCE_RETURN_FCI)
-            p2 = (byte) 0x00;
-        else if(selectMode == SELECT_NEXT_OCCURRENCE_RETURN_FCI)
-            p2 = (byte) 0x02;
-        else if(selectMode == SELECT_FIRST_OCCURRENCE_DONT_RETURN_FCI)
-            p2 = (byte) 0x0C;
-        else if(selectMode == SELECT_NEXT_OCCURRENCE_DONT_RETURN_FCI)
-            p2 = (byte) 0x0E;
-        else
-            throw new IllegalArgumentException("SelectMode value not valid!");
+      byte cla = (byte) 0x00;
+      byte p1 = (byte) 0x04;
+      byte p2;
 
-        setApduRequest(new ApduRequestAdapter(ApduUtil.build(cla, command.getInstructionByte(),
-                p1, p2, Calypso.AID, null)));
+      if(selectMode == SELECT_FIRST_OCCURRENCE_RETURN_FCI)
+        p2 = (byte) 0x00;
+      else if(selectMode == SELECT_NEXT_OCCURRENCE_RETURN_FCI)
+        p2 = (byte) 0x02;
+      else if(selectMode == SELECT_FIRST_OCCURRENCE_DONT_RETURN_FCI)
+        p2 = (byte) 0x0C;
+      else if(selectMode == SELECT_NEXT_OCCURRENCE_DONT_RETURN_FCI)
+        p2 = (byte) 0x0E;
+      else
+        throw new IllegalArgumentException("SelectMode value not valid!");
+
+      setApduRequest(new ApduRequestAdapter(ApduUtil.build(cla, command.getInstructionByte(),
+        p1, p2, datain, null)));
     }
 
     @Override

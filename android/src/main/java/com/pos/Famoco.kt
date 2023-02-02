@@ -11,7 +11,9 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
+import com.facebook.react.bridge.ReadableMap
 import com.pos.byteUtils.ByteConvertStringUtil
+import com.pos.calypso.CardReadRecordsBuilder
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -102,21 +104,21 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
     }
   }
 
-  override suspend fun readRecordsFromCard(promise: Promise) {
+  override suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
     try {
       openCardReader()
-      super.readRecordsFromCard(promise)
+      super.readRecordsFromCard(options, promise)
       closeCardReader()
     } catch (e: Throwable) {
       promise.reject(e)
     }
   }
 
-  override suspend fun writeToCard(apdu: ReadableArray, promise: Promise) {
+  override suspend fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
     try {
       openSamReader()
       openCardReader()
-      super.writeToCard(apdu, promise)
+      super.writeToCardUpdate(apdu, options, promise)
       closeCardReader()
       closeSamReader()
     } catch (e: Throwable) {
