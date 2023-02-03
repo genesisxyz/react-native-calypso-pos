@@ -6,6 +6,7 @@ import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
 
+
 abstract class CardManager {
   protected lateinit var cardId: String
 
@@ -155,20 +156,22 @@ abstract class CardManager {
   }
 
   private fun unlockSam(samUnlockString: String): SamUnlockParser {
-    val samUnlockBuilder = SamUnlockBuilder(ByteConvertStringUtil.stringToByteArray(samUnlockString))
-
-    val samUnlockResponseAdapter = ApduResponseAdapter(transmitToSam(samUnlockBuilder.apdu))
-
-    val samUnlockParser = samUnlockBuilder.createResponseParser(samUnlockResponseAdapter)
-
-    // TODO: why this try catch?
     try {
-      samUnlockParser.checkStatus()
-    } catch (e: CalypsoApduCommandException) {
-      if (e is CalypsoSamAccessForbiddenException) ; else throw e
-    }
+      val bytes = ByteConvertStringUtil.stringToByteArray(samUnlockString)
+      val samUnlockBuilder = SamUnlockBuilder(ByteConvertStringUtil.stringToByteArray(samUnlockString))
+      val samUnlockResponseAdapter = ApduResponseAdapter(transmitToSam(samUnlockBuilder.apdu))
+      val samUnlockParser = samUnlockBuilder.createResponseParser(samUnlockResponseAdapter)
+      // TODO: why this try catch?
+      try {
+        samUnlockParser.checkStatus()
+      } catch (e: CalypsoApduCommandException) {
+        if (e is CalypsoSamAccessForbiddenException) ; else throw e
+      }
 
-    return samUnlockParser
+      return samUnlockParser
+    } catch (e: PosException) {
+      throw e
+    }
   }
 
   private fun selectSamDiversifier(selectApplicationParser: SelectApplicationParser): SamSelectDiversifierParser {
@@ -298,5 +301,9 @@ abstract class CardManager {
       samDigestAuthenticateResponseAdapter)
 
     samDigestAuthenticateParser.checkStatus()
+  }
+
+  companion object {
+    const val TAG = "CardManager"
   }
 }

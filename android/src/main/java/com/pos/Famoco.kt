@@ -13,10 +13,10 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 import com.pos.byteUtils.ByteConvertStringUtil
-import com.pos.calypso.CardReadRecordsBuilder
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+
 
 class Famoco(private val reactContext: ReactApplicationContext) : CardManager() {
   private lateinit var samId: String

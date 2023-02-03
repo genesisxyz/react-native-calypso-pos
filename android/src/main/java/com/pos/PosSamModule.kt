@@ -2,15 +2,13 @@ package com.pos
 
 import android.os.Build
 import com.facebook.react.bridge.*
-import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.calypso.Calypso
-import com.pos.calypso.CardReadRecordsBuilder
 import kotlinx.coroutines.*
 
 
 class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
-  private lateinit var device: CardManager
+  private var device: CardManager? = null
 
   private val isFamoco = Build.MANUFACTURER.equals("wizarPOS")
 
@@ -27,25 +25,27 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   @OptIn(DelicateCoroutinesApi::class)
   fun init(promise: Promise) {
     GlobalScope.launch {
-      device = if (isFamoco) {
-        Famoco(reactApplicationContext)
-      } else {
-        Telpo(reactApplicationContext)
+      if (device == null) {
+        if (isFamoco) {
+          device = Famoco(reactApplicationContext)
+        } else {
+          device = Telpo(reactApplicationContext)
+        }
       }
-      device.init(promise)
+      device?.init(promise)
     }
   }
 
   @ReactMethod
   fun close() {
-    device.close()
+    device?.close()
   }
 
   @ReactMethod
   @OptIn(DelicateCoroutinesApi::class)
   fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
     GlobalScope.launch {
-      device.writeToCardUpdate(apdu, options, promise)
+      device?.writeToCardUpdate(apdu, options, promise)
     }
   }
 
@@ -53,7 +53,7 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   @OptIn(DelicateCoroutinesApi::class)
   fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
     GlobalScope.launch {
-      device.readRecordsFromCard(options, promise)
+      device?.readRecordsFromCard(options, promise)
     }
   }
 
