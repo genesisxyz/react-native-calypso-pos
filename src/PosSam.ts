@@ -33,6 +33,10 @@ export function close() {
   return PosSam.close();
 }
 
+export async function readCardId(): Promise<string> {
+  return await PosSam.readCardId();
+}
+
 export async function readRecordsFromCard(options: {
   application: Uint8Array;
   sfi: number;

@@ -42,6 +42,13 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   }
 
   @ReactMethod
+  fun readCardId(promise: Promise) {
+    GlobalScope.launch {
+      device?.readCardId(promise)
+    }
+  }
+
+  @ReactMethod
   @OptIn(DelicateCoroutinesApi::class)
   fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
     GlobalScope.launch {

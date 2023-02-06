@@ -49,6 +49,22 @@ abstract class CardManager {
     return readRecordsParser
   }
 
+  open suspend fun readCardId(promise: Promise) {
+    try {
+      waitForCard()
+      connectCard()
+      if (cardIsConnected) {
+        promise.resolve(cardId)
+      } else {
+        promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not connected"))
+      }
+    } catch (e: Throwable) {
+      promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not present"))
+    } finally {
+      disconnectCard()
+    }
+  }
+
   open suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
     val application = options.getArray("application")!!
     val sfi = options.getInt("sfi")

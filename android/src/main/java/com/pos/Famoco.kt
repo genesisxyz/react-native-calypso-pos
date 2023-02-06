@@ -104,6 +104,16 @@ class Famoco(private val reactContext: ReactApplicationContext) : CardManager() 
     }
   }
 
+  override suspend fun readCardId(promise: Promise) {
+    try {
+      openCardReader()
+      super.readCardId(promise)
+      closeCardReader()
+    } catch (e: Throwable) {
+      promise.reject(e)
+    }
+  }
+
   override suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
     try {
       openCardReader()

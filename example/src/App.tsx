@@ -130,6 +130,17 @@ export default function App() {
     setIsLoadingWrite(false);
   };
 
+  const readId = async () => {
+    setIsLoadingRead(true);
+    try {
+      const cardId = await PosSam.readCardId();
+      console.warn(cardId);
+    } catch (e) {
+      console.warn(e);
+    }
+    setIsLoadingRead(false);
+  };
+
   const read = async () => {
     setIsLoadingRead(true);
     try {
@@ -190,6 +201,17 @@ export default function App() {
           <ActivityIndicator />
         ) : (
           <Text style={styles.text}>PRINT STRING</Text>
+        )}
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={readId}
+        disabled={isLoadingRead}
+      >
+        {isLoadingRead ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.text}>Read card ID</Text>
         )}
       </Pressable>
       <Pressable style={styles.button} onPress={read} disabled={isLoadingRead}>
