@@ -15,7 +15,7 @@ RCT_EXTERN_METHOD(readRecordsFromCard:(NSDictionary *)options
                   withRejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(writeToCardUpdate:(NSString *)adpu withOptions:(NSDictionary *)options
-                  withResolver(RCTPromiseResolveBlock)resolve
+                  withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 
 + (BOOL)requiresMainQueueSetup
