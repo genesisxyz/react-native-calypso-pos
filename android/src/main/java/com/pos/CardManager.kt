@@ -8,6 +8,7 @@ import com.pos.calypso.*
 
 
 abstract class CardManager {
+  protected lateinit var samId: String
   protected lateinit var cardId: String
 
   protected var samIsConnected = false
@@ -54,7 +55,10 @@ abstract class CardManager {
       waitForCard()
       connectCard()
       if (cardIsConnected) {
-        promise.resolve(cardId)
+        val map = Arguments.createMap()
+        map.putString("samId", samId)
+        map.putString("cardId", cardId)
+        promise.resolve(map)
       } else {
         promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not connected"))
       }

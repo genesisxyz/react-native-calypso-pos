@@ -33,7 +33,7 @@ export function close() {
   return PosSam.close();
 }
 
-export async function readCardId(): Promise<string> {
+export async function readCardId(): Promise<{ samId: string; cardId: string }> {
   return await PosSam.readCardId();
 }
 

@@ -9,9 +9,7 @@ import android.nfc.tech.IsoDep
 import android.os.Build
 import com.cloudpos.DeviceException
 import com.facebook.react.bridge.*
-import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.pos.byteUtils.ByteConvertStringUtil
-import com.pos.calypso.CardReadRecordsBuilder
 import com.telpo.tps550.api.reader.SmartCardReader
 import kotlinx.coroutines.*
 import java.io.IOException
@@ -19,7 +17,6 @@ import java.io.IOException
 class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), LifecycleEventListener {
 
   private lateinit var samReader: SmartCardReader
-  private lateinit var samId: String
   private var isoDep: IsoDep? = null
 
   private var nfcAdapter: NfcAdapter? = null
@@ -187,13 +184,16 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
 
   override fun connectSam() {
     if (samIsConnected) return
-    // TODO: manage return of open and iccPowerOn
     val isOpen = samReader.open()
     val isIccPowerOn = samReader.iccPowerOn()
 
     if (!isOpen || !isIccPowerOn) {
       throw PosException(PosException.SAM_CONNECT_FAIL, "Cannot connect to SAM")
     }
+
+    val tempSamId = samReader.atrString
+    if (tempSamId != null) samId = tempSamId.substring(24, 32)
+
     samIsConnected = true
   }
 
