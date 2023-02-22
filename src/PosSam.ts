@@ -70,8 +70,11 @@ export async function writeToCardUpdate(
 export function addCardStatusListener(
   listener: (event: { status: 'detected' }) => void
 ) {
-  const eventEmitter = new NativeEventEmitter();
-  return eventEmitter.addListener('CardStatus', listener);
+  if (Platform.OS === 'android') {
+    const eventEmitter = new NativeEventEmitter();
+    return eventEmitter.addListener('CardStatus', listener);
+  }
+  return null;
 }
 
 export enum CardStatus {

@@ -7,8 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5E555C0D2413F4C50049A1A2 /* Pos.m in Sources */ = {isa = PBXBuildFile; fileRef = B3E7B5891CC2AC0600A0062D /* Pos.m */; };
-		F4FF95D7245B92E800C19C63 /*  Pos.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4FF95D6245B92E800C19C63 /*  Pos.swift */; };
+		861D732A29A5FC7C000B3C64 /* PosSam.swift in Sources */ = {isa = PBXBuildFile; fileRef = 861D732829A5FC7B000B3C64 /* PosSam.swift */; };
+		861D732E29A606D4000B3C64 /* PosPrinter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 861D732D29A606D4000B3C64 /* PosPrinter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -25,9 +25,11 @@
 
 /* Begin PBXFileReference section */
 		134814201AA4EA6300B7C361 /* libPos.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libPos.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		B3E7B5891CC2AC0600A0062D /* Pos.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Pos.m; sourceTree = "<group>"; };
+		861D732829A5FC7B000B3C64 /* PosSam.swift */ = {isa = PBXFileReference; fileEncoding = 4; indentWidth = 2; lastKnownFileType = sourcecode.swift; path = PosSam.swift; sourceTree = "<group>"; tabWidth = 2; };
+		861D732929A5FC7C000B3C64 /* PosSam.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PosSam.m; sourceTree = "<group>"; };
+		861D732D29A606D4000B3C64 /* PosPrinter.swift */ = {isa = PBXFileReference; indentWidth = 2; lastKnownFileType = sourcecode.swift; path = PosPrinter.swift; sourceTree = "<group>"; tabWidth = 2; };
+		861D732F29A60794000B3C64 /* PosPrinter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PosPrinter.m; sourceTree = "<group>"; };
 		F4FF95D5245B92E700C19C63 /* Pos-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Pos-Bridging-Header.h"; sourceTree = "<group>"; };
-		F4FF95D6245B92E800C19C63 /* Pos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pos.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,8 +54,10 @@
 		58B511D21A9E6C8500147676 = {
 			isa = PBXGroup;
 			children = (
-				F4FF95D6245B92E800C19C63 /* Pos.swift */,
-				B3E7B5891CC2AC0600A0062D /* Pos.m */,
+				861D732F29A60794000B3C64 /* PosPrinter.m */,
+				861D732D29A606D4000B3C64 /* PosPrinter.swift */,
+				861D732929A5FC7C000B3C64 /* PosSam.m */,
+				861D732829A5FC7B000B3C64 /* PosSam.swift */,
 				F4FF95D5245B92E700C19C63 /* Pos-Bridging-Header.h */,
 				134814211AA4EA7D00B7C361 /* Products */,
 			);
@@ -116,8 +120,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F4FF95D7245B92E800C19C63 /* Pos.swift in Sources */,
-				B3E7B58A1CC2AC0600A0062D /* Pos.m in Sources */,
+				861D732A29A5FC7C000B3C64 /* PosSam.swift in Sources */,
+				861D732E29A606D4000B3C64 /* PosPrinter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
