@@ -122,6 +122,12 @@ class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), 
     }
   }
 
+  override suspend fun readCardId(promise: Promise) {
+    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
+      super.readCardId(promise)
+    }
+  }
+
   override fun connectCard() {
     if (cardIsConnected) return
     cardIsConnected = try {
