@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { PosPrinter, PosSam } from 'react-native-pos';
+import { Printer, Pos } from 'react-native-pos';
 
 import data from './data.json';
 import { format } from 'date-fns';
@@ -59,44 +59,37 @@ export default function App() {
 
   useEffect(() => {
     if (!isInitialized) {
-      PosSam.init().then(() => {
+      Pos.init().then(() => {
         setIsInitialized(true);
       });
     }
 
-    const cardStatusListener = PosSam.addCardStatusListener((event) => {
+    const cardStatusListener = Pos.addCardStatusListener((event) => {
       console.log(event.status);
     });
 
     return () => {
       cardStatusListener?.remove();
-      PosSam.close();
+      Pos.close();
     };
   }, [isInitialized]);
 
-  const printHTML = async () => {
-    setIsLoadingPrint(true);
-    const isOpen = await PosPrinter.open();
-    if (isOpen) {
-      await PosPrinter.printHTML(
-        '<h4 style="text-align:center;margin-top:10px;margin-bottom:0;">Durata</h4>'
-      );
-      await PosPrinter.close();
-    }
-    setIsLoadingPrint(false);
-  };
-
   const printString = async () => {
     setIsLoadingPrint(true);
-    const isOpen = await PosPrinter.open();
+    const isOpen = await Printer.open();
     if (isOpen) {
-      PosPrinter.setGrey(6);
-      PosPrinter.setLineSpace(5);
-      PosPrinter.setBold(true);
-      PosPrinter.setAlgin(PosPrinter.Mode.ALGIN_MIDDLE);
-      PosPrinter.addString('Ciao Mondo');
-      PosPrinter.printString();
-      await PosPrinter.close();
+      await Printer.print([
+        {
+          type: 'text',
+          data: 'Hello, World!',
+          options: {
+            align: Printer.Align.Center,
+            size: 16,
+            fontWeight: Printer.FontWeight.Bold,
+          },
+        },
+      ]);
+      await Printer.close();
     }
     setIsLoadingPrint(false);
   };
@@ -118,7 +111,7 @@ export default function App() {
         dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
       });
 
-      await PosSam.writeToCardUpdate(environmentRecord.record, {
+      await Pos.writeToCardUpdate(environmentRecord.record, {
         application: EFEnvironmentRecord.AID,
         sfi: EFEnvironmentRecord.SFI,
         offset: 1,
@@ -133,7 +126,7 @@ export default function App() {
   const readId = async () => {
     setIsLoadingRead(true);
     try {
-      const cardId = await PosSam.readCardId();
+      const cardId = await Pos.readCardId();
       console.warn(cardId);
     } catch (e) {
       console.warn(e);
@@ -144,11 +137,11 @@ export default function App() {
   const read = async () => {
     setIsLoadingRead(true);
     try {
-      const { records, cardId } = await PosSam.readRecordsFromCard({
+      const { records, cardId } = await Pos.readRecordsFromCard({
         application: EFEnvironmentRecord.AID,
         sfi: EFEnvironmentRecord.SFI,
         offset: 1,
-        readMode: 1,
+        readMode: Pos.ReadMode.OneRecord,
       });
       for (const key in records) {
         if (Object.prototype.hasOwnProperty.call(records, key)) {
@@ -181,17 +174,6 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Pressable
-        style={styles.button}
-        onPress={printHTML}
-        disabled={isLoadingPrint}
-      >
-        {isLoadingPrint ? (
-          <ActivityIndicator />
-        ) : (
-          <Text style={styles.text}>PRINT HTML</Text>
-        )}
-      </Pressable>
       <Pressable
         style={styles.button}
         onPress={printString}

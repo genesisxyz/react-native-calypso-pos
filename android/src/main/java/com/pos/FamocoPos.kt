@@ -18,7 +18,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 
-class Famoco(private val reactContext: ReactApplicationContext) : CardManager() {
+class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager() {
   private lateinit var samCard: Card
   private lateinit var rfCard: Card
 

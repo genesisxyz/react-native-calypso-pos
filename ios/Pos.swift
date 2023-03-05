@@ -1,7 +1,7 @@
 import Foundation
 
-@objc(PosSam)
-class PosSam: NSObject {
+@objc(Pos)
+class Pos: NSObject {
     
   @objc(init:withRejecter:)
   func `init`(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
@@ -24,12 +24,12 @@ class PosSam: NSObject {
       "records": [
         "1": [0x05, 0x35, 0x00, 0x04, 0x93, 0xE2, 0x00, 0xA0, 0x02, 0x8B, 0xE8, 0x22, 0x54, 0x53, 0x54, 0x54, 0x53, 0x54, 0x35, 0x36, 0x44, 0x34, 0x36, 0x4C, 0x32, 0x31, 0x39, 0x47, 0xC0],
       ],
-      "samId": "00 00 00",
+      "cardId": "123456789",
     ])
   }
   
   @objc(writeToCardUpdate:withOptions:withResolver:withRejecter:)
-  func writeToCardUpdate(apdu: String, options: NSDictionary, resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
+  func writeToCardUpdate(apdu: NSArray, options: NSDictionary, resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
       resolve(nil)
   }
 }

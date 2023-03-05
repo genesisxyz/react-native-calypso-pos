@@ -6,8 +6,8 @@ const LINKING_ERROR =
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo Go\n';
 
-const PosSam = NativeModules.PosSam
-  ? NativeModules.PosSam
+const Pos = NativeModules.Pos
+  ? NativeModules.Pos
   : new Proxy(
       {},
       {
@@ -18,35 +18,46 @@ const PosSam = NativeModules.PosSam
     );
 
 type CalypsoConstants = {
-  ZERO_TIME_MILLIS: number; // TODO: THIS IS NOT CALYPSO THIS IS DEFINED ON BIP
+  ZeroTimeMillis: number; // TODO: THIS IS NOT CALYPSO THIS IS DEFINED ON BIP
 };
 
-const constants = PosSam.getConstants();
+const constants = Pos.getConstants();
 
-export const CALYPSO: CalypsoConstants = constants;
+export const Calypso: CalypsoConstants = constants;
+
+export enum CardStatus {
+  Unknown,
+  PrePersonalized,
+  Personalized,
+}
+
+export enum ReadMode {
+  OneRecord,
+  MultipleRecords,
+}
 
 export async function init(): Promise<boolean> {
-  return await PosSam.init();
+  return await Pos.init();
 }
 
 export function close() {
-  return PosSam.close();
+  return Pos.close();
 }
 
 export async function readCardId(): Promise<{ samId: string; cardId: string }> {
-  return await PosSam.readCardId();
+  return await Pos.readCardId();
 }
 
 export async function readRecordsFromCard(options: {
   application: Uint8Array;
   sfi: number;
   offset: number;
-  readMode: number;
+  readMode: ReadMode;
 }): Promise<{
   records: Record<number, number[]>;
   cardId: string;
 }> {
-  return await PosSam.readRecordsFromCard({
+  return await Pos.readRecordsFromCard({
     ...options,
     application: Array.from(options.application),
   });
@@ -61,7 +72,7 @@ export async function writeToCardUpdate(
     samUnlockString: string;
   }
 ): Promise<void> {
-  return await PosSam.writeToCardUpdate(Array.from(adpu), {
+  return await Pos.writeToCardUpdate(Array.from(adpu), {
     ...options,
     application: Array.from(options.application),
   });
@@ -75,10 +86,4 @@ export function addCardStatusListener(
     return eventEmitter.addListener('CardStatus', listener);
   }
   return null;
-}
-
-export enum CardStatus {
-  Unknown,
-  PrePersonalized,
-  Personalized,
 }

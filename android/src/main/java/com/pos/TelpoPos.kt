@@ -14,7 +14,7 @@ import com.telpo.tps550.api.reader.SmartCardReader
 import kotlinx.coroutines.*
 import java.io.IOException
 
-class Telpo(private val reactContext: ReactApplicationContext) : CardManager(), LifecycleEventListener {
+class TelpoPos(private val reactContext: ReactApplicationContext) : CardManager(), LifecycleEventListener {
 
   private lateinit var samReader: SmartCardReader
   private var isoDep: IsoDep? = null

@@ -1,4 +1,4 @@
-import { PosSam } from 'react-native-pos';
+import { Pos } from 'react-native-pos';
 import { add, isFuture, isPast } from 'date-fns';
 
 export class EFEnvironmentRecord {
@@ -77,7 +77,7 @@ export class EFEnvironmentRecord {
 
     const emissionDate = Math.floor(
       ((data.emissionDate || new Date().getTime()) -
-        PosSam.CALYPSO.ZERO_TIME_MILLIS) /
+        Pos.Calypso.ZeroTimeMillis) /
         (60 * 1000)
     )
       .toString(16)
@@ -149,7 +149,7 @@ export class EFEnvironmentRecord {
   public get emissionDate() {
     return (
       parseInt(this.recordParsed.emissionDate, 16) * 60 * 1000 +
-      PosSam.CALYPSO.ZERO_TIME_MILLIS
+      Pos.Calypso.ZeroTimeMillis
     );
   }
 

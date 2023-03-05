@@ -1,4 +1,4 @@
-import * as PosPrinter from './PosPrinter';
-import * as PosSam from './PosSam';
+import * as Printer from './Printer';
+import * as Pos from './Pos';
 
-export { PosPrinter, PosSam };
+export { Printer, Pos };

@@ -6,11 +6,12 @@ import com.pos.calypso.Calypso
 import kotlinx.coroutines.*
 
 
-class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
   private var device: CardManager? = null
 
   private val isFamoco = Build.MANUFACTURER.equals("wizarPOS")
+  private val isArm = Build.CPU_ABI.lowercase() in listOf("armeabi-v7a", "arm64-v8a", "armeabi")
 
   override fun getName(): String {
     return NAME
@@ -18,7 +19,7 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
 
   override fun getConstants(): MutableMap<String, Any> =
     hashMapOf(
-      "ZERO_TIME_MILLIS" to Calypso.ZERO_TIME_MILLIS,
+      "ZeroTimeMillis" to Calypso.ZERO_TIME_MILLIS,
     )
 
   @ReactMethod
@@ -26,10 +27,14 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   fun init(promise: Promise) {
     GlobalScope.launch {
       if (device == null) {
-        if (isFamoco) {
-          device = Famoco(reactApplicationContext)
+        if (isArm) {
+          if (isFamoco) {
+            device = FamocoPos(reactApplicationContext)
+          } else {
+            device = TelpoPos(reactApplicationContext)
+          }
         } else {
-          device = Telpo(reactApplicationContext)
+          device = GenericPos(reactApplicationContext)
         }
       }
       device?.init(promise)
@@ -38,7 +43,9 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
 
   @ReactMethod
   fun close() {
-    device?.close()
+    if (isArm) {
+      device?.close()
+    }
   }
 
   @ReactMethod
@@ -65,6 +72,6 @@ class PosSamModule(reactContext: ReactApplicationContext) : ReactContextBaseJava
   }
 
   companion object {
-    const val NAME = "PosSam"
+    const val NAME = "Pos"
   }
 }

@@ -73,8 +73,10 @@ abstract class CardManager {
     val application = options.getArray("application")!!
     val sfi = options.getInt("sfi")
     val offset = options.getInt("offset")
-    // val readMode = CardReadRecordsBuilder.ReadMode.values().first { it.ordinal == options.getInt("readMore") }
-    val readMode = CardReadRecordsBuilder.ReadMode.ONE_RECORD;
+    val readMode = when (options.getInt("readMode")) {
+      1 -> CardReadRecordsBuilder.ReadMode.MULTIPLE_RECORD
+      else -> CardReadRecordsBuilder.ReadMode.ONE_RECORD
+    }
 
     try {
       waitForCard()
