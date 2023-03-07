@@ -60,8 +60,15 @@ class TelpoPos(private val reactContext: ReactApplicationContext) : CardManager(
       return
     }
 
-    val pendingIntent = PendingIntent.getActivity(activity, 0,
-      Intent(activity, activity!!.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0)
+    val pendingIntent = PendingIntent.getActivity(
+      activity,
+      0,
+      Intent(activity, activity!!.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+      else
+        PendingIntent.FLAG_UPDATE_CURRENT
+    )
     val intentFilter = IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
 
     try {
