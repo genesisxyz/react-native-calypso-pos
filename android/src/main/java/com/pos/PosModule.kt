@@ -11,6 +11,7 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
   private var device: CardManager? = null
 
   private val isFamoco = Build.MANUFACTURER.equals("wizarPOS")
+  private val isTelpo = Build.MODEL.startsWith("TPS")
   private val isArm = Build.CPU_ABI.lowercase() in listOf("armeabi-v7a", "arm64-v8a", "armeabi")
 
   override fun getName(): String {
@@ -30,8 +31,10 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
         if (isArm) {
           if (isFamoco) {
             device = FamocoPos(reactApplicationContext)
-          } else {
+          } else if (isTelpo) {
             device = TelpoPos(reactApplicationContext)
+          } else {
+            device = GenericPos(reactApplicationContext)
           }
         } else {
           device = GenericPos(reactApplicationContext)

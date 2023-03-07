@@ -8,14 +8,17 @@ class PrinterModule(reactContext: ReactApplicationContext) :
   ReactContextBaseJavaModule(reactContext) {
 
   private val isFamoco = Build.MANUFACTURER.equals("wizarPOS")
+  private val isTelpo = Build.MODEL.startsWith("TPS")
   private val isArm = Build.CPU_ABI.lowercase() in listOf("armeabi-v7a", "arm64-v8a", "armeabi")
 
   private val printer: Printer by lazy {
     if (isArm) {
       if (isFamoco) {
         FamocoPrinter(reactApplicationContext)
-      } else {
+      } else if (isTelpo) {
         TelpoPrinter(reactApplicationContext)
+      } else {
+        GenericPrinter(reactApplicationContext)
       }
     } else {
       GenericPrinter(reactApplicationContext)
