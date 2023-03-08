@@ -113,9 +113,8 @@ abstract class Printer {
         html = "<div style=\"text-align: $align\"><span style=\"font-size: ${size}px; font-weight: ${fontWeight}\">$data</span></div>"
       }
       is PrintAction.NewLine -> {
-        for (i in 0..printAction.data) {
-          html += "<br />"
-        }
+        val data = printAction.data
+        html += "<div style=\"height: ${data * 10}px;\"></div>"
       }
     }
 
