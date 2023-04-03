@@ -12,7 +12,12 @@ class TelpoPrinter(reactApplicationContext: ReactApplicationContext): Printer() 
 
   override fun print(actions: List<PrintAction>, promise: Promise) {
     actions.forEach {
-      printAction(it)
+      try {
+        printAction(it)
+      } catch (e: Exception) {
+        promise.resolve(false)
+        return
+      }
     }
     promise.resolve(true)
   }
@@ -103,5 +108,9 @@ class TelpoPrinter(reactApplicationContext: ReactApplicationContext): Printer() 
     val imageBytes = Base64.decode(image, 0)
     val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
     printer.printLogo(bitmap, false)
+  }
+
+  companion object {
+    const val TAG = "TelpoPrinter"
   }
 }
