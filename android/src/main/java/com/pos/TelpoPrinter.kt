@@ -15,6 +15,17 @@ class TelpoPrinter(reactApplicationContext: ReactApplicationContext): Printer() 
       try {
         printAction(it)
       } catch (e: Exception) {
+        if (e is TelpoException) {
+          val status = printer.checkStatus()
+          when (status) {
+            UsbThermalPrinter.STATUS_NO_PAPER, 16 -> promise.reject(PrinterException.NO_PAPER, "No paper")
+            UsbThermalPrinter.STATUS_OVER_HEAT -> promise.reject(PrinterException(PrinterException.OVER_HEAT, "Overheating"))
+            UsbThermalPrinter.STATUS_OVER_FLOW -> promise.reject(PrinterException(PrinterException.OVER_FLOW, "Overflow"))
+            else -> promise.reject(PrinterException(PrinterException.UNKNOWN, "Unknown"))
+          }
+
+          return;
+        }
         promise.resolve(false)
         return
       }
@@ -57,15 +68,6 @@ class TelpoPrinter(reactApplicationContext: ReactApplicationContext): Printer() 
       is PrintAction.NewLine -> {
         walkPaper(printAction.data.toDouble())
       }
-    }
-  }
-
-  fun checkStatus(promise: Promise) {
-    try {
-      val status = printer.checkStatus()
-      promise.resolve(status)
-    } catch (e: TelpoException) {
-      promise.resolve(UsbThermalPrinter.STATUS_UNKNOWN)
     }
   }
 

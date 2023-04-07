@@ -78,18 +78,26 @@ export default function App() {
     setIsLoadingPrint(true);
     const isOpen = await Printer.open();
     if (isOpen) {
-      await Printer.print([
-        {
-          type: 'text',
-          data: 'Hello, World!',
-          options: {
-            align: Printer.Align.Center,
-            size: 16,
-            fontWeight: Printer.FontWeight.Bold,
+      try {
+        await Printer.print([
+          {
+            type: 'text',
+            data: 'Hello, World!',
+            options: {
+              align: Printer.Align.Center,
+              size: 16,
+              fontWeight: Printer.FontWeight.Bold,
+            },
           },
-        },
-      ]);
-      await Printer.close();
+        ]);
+        await Printer.close();
+      } catch (e) {
+        if (Printer.isPrinterError(e)) {
+          if (e.code === Printer.ErrorCode.NoPaper) {
+            console.warn('No paper');
+          }
+        }
+      }
     }
     setIsLoadingPrint(false);
   };

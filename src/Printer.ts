@@ -17,13 +17,11 @@ const Printer = NativeModules.Printer
       }
     );
 
-export enum Status {
-  Ok = 0,
-  NoPaper,
-  Overheat,
-  Overflow,
-  Unknown,
-  Error = 16,
+export enum ErrorCode {
+  NoPaper = 'NO_PAPER',
+  Overheat = 'OVERHEAT',
+  Overflow = 'OVERFLOW',
+  Unknown = 'UNKNOWN',
 }
 
 export enum Align {
@@ -59,8 +57,16 @@ export type PrintAction =
       };
     };
 
-export async function checkStatus(): Promise<Status> {
-  return await Printer.checkStatus();
+export type PrinterError = {
+  code: ErrorCode;
+  message: string;
+};
+
+export function isPrinterError(obj: any): obj is PrinterError {
+  return (
+    (obj as PrinterError).code !== undefined &&
+    (obj as PrinterError).message !== undefined
+  );
 }
 
 export async function print(printActions: PrintAction[]): Promise<boolean> {
