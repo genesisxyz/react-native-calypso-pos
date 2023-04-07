@@ -136,11 +136,13 @@ repositories {
 def kotlin_version = getExtOrDefault('kotlinVersion')
 
 dependencies {
+  // implementation (files('libs/cloudpossdkV1.5.3.089_Standard_20220104.aar'))
   //noinspection GradleDynamicVersion
   implementation "com.facebook.react:react-native:+"
   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
   // From node_modules
-  implementation fileTree(include: ['*.jar', '*.aar'], dir: 'libs')
+  implementation project(':cloudpossdk')
+  implementation fileTree(include: ['*.jar'], dir: 'libs')
   implementation "org.eclipse.keyple:keyple-util-java-lib:2.0.0"
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'
