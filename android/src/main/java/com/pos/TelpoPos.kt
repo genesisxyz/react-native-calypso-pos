@@ -65,7 +65,7 @@ class TelpoPos(private val reactContext: ReactApplicationContext) : CardManager(
       0,
       Intent(activity, activity!!.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
       else
         PendingIntent.FLAG_UPDATE_CURRENT
     )

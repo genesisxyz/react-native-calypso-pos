@@ -1,19 +1,120 @@
 package com.pos
 
-import com.facebook.react.bridge.Arguments
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReadableMap
+import android.app.PendingIntent
+import android.content.Intent
+import android.content.IntentFilter
+import android.nfc.NfcAdapter
+import android.nfc.Tag
+import android.nfc.tech.IsoDep
+import android.os.Build
+import com.cloudpos.DeviceException
+import com.facebook.react.bridge.*
+import com.pos.byteUtils.ByteConvertStringUtil
+import com.telpo.tps550.api.reader.SmartCardReader
+import kotlinx.coroutines.*
+import java.io.IOException
 
-class GenericPos(private val reactContext: ReactApplicationContext): CardManager() {
+class GenericPos(private val reactContext: ReactApplicationContext): CardManager(), LifecycleEventListener {
+  private var isoDep: IsoDep? = null
+
+  private var nfcAdapter: NfcAdapter? = null
+
+  private val baseActivityEventListener = object : BaseActivityEventListener() {
+    override fun onNewIntent(intent: Intent?) {
+      super.onNewIntent(intent)
+      if (NfcAdapter.ACTION_TECH_DISCOVERED == intent?.action) {
+        val tag = intent.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
+        if (tag != null && (isoDep == null || !isoDep!!.isConnected)) {
+          isoDep = IsoDep.get(tag)
+          isoDep!!.timeout = 5000 // 5 seconds
+
+          val cardIdHex = ByteConvertStringUtil.bytesToHexString(tag.id)
+          cardId = cardIdHex.replace("\\s+".toRegex(), "").toLong(16).toString()
+
+          if (job != null) {
+            val params = Arguments.createMap().apply {
+              putString("status", "detected")
+            }
+            sendEvent(reactContext, "CardStatus", params)
+            job?.start()
+            job = null
+          }
+        } else {
+          // TODO: to be tested
+          job?.cancel("error", PosException(PosException.CARD_NOT_PRESENT, "Can't read card tag"))
+        }
+      }
+    }
+  }
+
+  // region LifecycleEventListener
+
+  override fun onHostResume() {
+    val activity = reactContext.currentActivity
+    nfcAdapter = NfcAdapter.getDefaultAdapter(activity)
+
+    if (nfcAdapter == null) {
+      // Handle case where device does not support NFC
+      return
+    }
+
+    val pendingIntent = PendingIntent.getActivity(
+      activity,
+      0,
+      Intent(activity, activity!!.javaClass).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+      else
+        PendingIntent.FLAG_UPDATE_CURRENT
+    )
+    val intentFilter = IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
+
+    try {
+      nfcAdapter?.enableForegroundDispatch(activity, pendingIntent,
+        arrayOf(intentFilter), arrayOf(arrayOf(IsoDep::class.java.name)))
+    } catch (e: IllegalStateException) {
+      // Handle case where app is not in foreground
+    }
+  }
+
+  override fun onHostPause() {
+    nfcAdapter?.disableForegroundDispatch(reactContext.currentActivity)
+  }
+
+  override fun onHostDestroy() {
+
+  }
+
+  // endregion LifecycleEventListener
+
+  init {
+    reactContext.addActivityEventListener(baseActivityEventListener)
+    reactContext.addLifecycleEventListener(this)
+  }
+
+  private var posIsInitialized = false
+
   override suspend fun init(promise: Promise) {
-    samId = "00 00 00"
-    cardId = "123456789"
+    if (posIsInitialized) {
+      promise.resolve(true)
+      return
+    }
+
+    samId = ""
+    posIsInitialized = true
     promise.resolve(true)
   }
 
-  override fun close() {
+  private var job: Job? = null
 
+  override fun close() {
+    try {
+      job?.cancel("message", PosException(PosException.PENDING_REQUEST, "Close called"))
+      disconnectCard()
+      disconnectSam()
+    } catch (e: Exception) {
+      e.printStackTrace()
+    }
   }
 
   override fun transmitToSam(apdu: ByteArray): ByteArray? {
@@ -21,6 +122,15 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
   }
 
   override fun transmitToCard(apdu: ByteArray): ByteArray? {
+    if (isoDep?.isConnected == true) {
+      try {
+        val received = isoDep?.transceive(apdu)
+        if (received != null)
+          return received
+      } catch (e: IOException) {
+        e.printStackTrace()
+      }
+    }
     return null
   }
 
@@ -33,11 +143,37 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
   }
 
   override fun connectCard() {
-    cardIsConnected = true
+    if (cardIsConnected) return
+    cardIsConnected = try {
+      isoDep?.connect()
+      true
+    } catch (e: DeviceException) {
+      e.printStackTrace()
+      if (e.code == -1) {
+        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+      }
+      true
+    }
   }
 
   override fun disconnectCard() {
-    cardIsConnected = false
+    if (!cardIsConnected) return
+    cardIsConnected = try {
+      isoDep?.run {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+          NfcAdapter.getDefaultAdapter(reactContext).ignore(this.tag, 1000, null, null)
+        }
+        this.close()
+      }
+      isoDep = null
+      false
+    } catch (e: DeviceException) {
+      e.printStackTrace()
+      if (e.code == -1) {
+        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+      }
+      false
+    }
   }
 
   override suspend fun waitForCard() {
@@ -45,11 +181,14 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
   }
 
   override suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
-    val map = Arguments.createMap()
-    val recordsMap = Arguments.createMap()
-    recordsMap.putArray("1", Arguments.fromList(listOf(0x05, 0x35, 0x00, 0x04, 0x93, 0xE2, 0x00, 0xA0, 0x02, 0x8B, 0xE8, 0x22, 0x54, 0x53, 0x54, 0x54, 0x53, 0x54, 0x35, 0x36, 0x44, 0x34, 0x36, 0x4C, 0x32, 0x31, 0x39, 0x47, 0xC0)))
-    map.putMap("records", recordsMap)
-    map.putString("cardId", "123456789")
-    promise.resolve(map)
+    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
+      super.readRecordsFromCard(options, promise)
+    }
+  }
+
+  override suspend fun readCardId(promise: Promise) {
+    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
+      super.readCardId(promise)
+    }
   }
 }
