@@ -60,7 +60,7 @@ abstract class CardManager {
         map.putString("cardId", cardId)
         promise.resolve(map)
       } else {
-        promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not connected"))
+        promise.reject(PosException(PosException.CARD_NOT_CONNECTED, "Card not connected"))
       }
     } catch (e: Throwable) {
       promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not present"))
@@ -140,7 +140,10 @@ abstract class CardManager {
 
       promise.resolve(true)
     } catch (e: Exception) {
-      promise.reject(e)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown")
+      }
     } finally {
       disconnectSam()
       disconnectCard()
@@ -179,6 +182,7 @@ abstract class CardManager {
 
   private fun unlockSam(samUnlockString: String): SamUnlockParser {
     try {
+      // TODO: what is 'bytes'?
       val bytes = ByteConvertStringUtil.stringToByteArray(samUnlockString)
       val samUnlockBuilder = SamUnlockBuilder(ByteConvertStringUtil.stringToByteArray(samUnlockString))
       val samUnlockResponseAdapter = ApduResponseAdapter(transmitToSam(samUnlockBuilder.apdu))
@@ -192,7 +196,7 @@ abstract class CardManager {
 
       return samUnlockParser
     } catch (e: PosException) {
-      throw e
+      throw PosException(PosException.SAM_CONNECT_FAIL, "Can't unlock SAM")
     }
   }
 

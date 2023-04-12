@@ -36,6 +36,31 @@ export enum ReadMode {
   MultipleRecords,
 }
 
+export type PosError = {
+  code: ErrorCode;
+  message: string;
+};
+
+export enum ErrorCode {
+  Unknown = 'UNKNOWN',
+  CardNotSupported = 'CARD_NOT_SUPPORTED',
+  CardNotPresent = 'CARD_NOT_PRESENT',
+  CardNotConnected = 'CARD_NOT_CONNECTED',
+  CardConnectFail = 'CARD_CONNECT_FAIL',
+  CardDisconnectFail = 'CARD_DISCONNECT_FAIL',
+  TransmitApduCommand = 'TRANSMIT_APDU_COMMAND',
+  PendingRequest = 'PENDING_REQUEST',
+  SamConnectFail = 'SAM_CONNECT_FAIL',
+  SamDisconnectFail = 'SAM_DISCONNECT_FAIL',
+}
+
+export function isPosError(obj: any): obj is PosError {
+  return (
+    (obj as PosError).code !== undefined &&
+    (obj as PosError).message !== undefined
+  );
+}
+
 export async function init(): Promise<boolean> {
   return await Pos.init();
 }

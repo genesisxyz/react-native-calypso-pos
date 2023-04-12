@@ -10,14 +10,13 @@ import android.os.Build
 import com.cloudpos.DeviceException
 import com.facebook.react.bridge.*
 import com.pos.byteUtils.ByteConvertStringUtil
-import com.telpo.tps550.api.reader.SmartCardReader
 import kotlinx.coroutines.*
 import java.io.IOException
 
-class GenericPos(private val reactContext: ReactApplicationContext): CardManager(), LifecycleEventListener {
-  private var isoDep: IsoDep? = null
+open class GenericPos(private val reactContext: ReactApplicationContext): CardManager(), LifecycleEventListener {
+  protected var isoDep: IsoDep? = null
 
-  private var nfcAdapter: NfcAdapter? = null
+  protected var nfcAdapter: NfcAdapter? = null
 
   private val baseActivityEventListener = object : BaseActivityEventListener() {
     override fun onNewIntent(intent: Intent?) {
@@ -41,7 +40,7 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
           }
         } else {
           // TODO: to be tested
-          job?.cancel("error", PosException(PosException.CARD_NOT_PRESENT, "Can't read card tag"))
+          job?.cancel("error", PosException(PosException.CARD_NOT_PRESENT, "Card not present"))
         }
       }
     }
@@ -92,7 +91,7 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
     reactContext.addLifecycleEventListener(this)
   }
 
-  private var posIsInitialized = false
+  protected var posIsInitialized = false
 
   override suspend fun init(promise: Promise) {
     if (posIsInitialized) {
@@ -105,11 +104,11 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
     promise.resolve(true)
   }
 
-  private var job: Job? = null
+  protected var job: Job? = null
 
   override fun close() {
     try {
-      job?.cancel("message", PosException(PosException.PENDING_REQUEST, "Close called"))
+      job?.cancel("close", PosException(PosException.PENDING_REQUEST, "Pending request"))
       disconnectCard()
       disconnectSam()
     } catch (e: Exception) {
@@ -135,7 +134,7 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
   }
 
   override fun connectSam() {
-    samIsConnected = true
+    samIsConnected = false
   }
 
   override fun disconnectSam() {
@@ -150,7 +149,7 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+        throw PosException(PosException.CARD_CONNECT_FAIL, "Card connect fail")
       }
       true
     }
@@ -170,7 +169,7 @@ class GenericPos(private val reactContext: ReactApplicationContext): CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
+        throw PosException(PosException.CARD_DISCONNECT_FAIL, "Card disconnect fail")
       }
       false
     }

@@ -109,7 +109,10 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
       super.readCardId(promise)
       closeCardReader()
     } catch (e: Throwable) {
-      promise.reject(e)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown")
+      }
     }
   }
 
@@ -119,7 +122,10 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
       super.readRecordsFromCard(options, promise)
       closeCardReader()
     } catch (e: Throwable) {
-      promise.reject(e)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown")
+      }
     }
   }
 
@@ -131,7 +137,10 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
       closeCardReader()
       closeSamReader()
     } catch (e: Throwable) {
-      promise.reject(e)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown")
+      }
     }
   }
 
@@ -143,7 +152,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code != -1) {
-        throw e
+        throw PosException(PosException.SAM_CONNECT_FAIL, "Sam connect fail")
       }
       true
     }
@@ -157,7 +166,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code != -1) {
-        throw e
+        throw PosException(PosException.SAM_DISCONNECT_FAIL, "Sam disconnect fail")
       }
       false
     }
@@ -179,7 +188,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
       }
       true
     }
@@ -193,7 +202,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.CARD_DISCONNECT_FAIL, "Card disconnect fail")
       }
       false
     }
@@ -216,7 +225,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.SAM_CONNECT_FAIL, "Sam connect fail")
       }
       true
     }
@@ -230,7 +239,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.SAM_DISCONNECT_FAIL, "Sam disconnect fail")
       }
       false
     }
@@ -244,7 +253,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.CARD_CONNECT_FAIL, "Card connect fail")
       }
       true
     }
@@ -258,7 +267,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.CARD_DISCONNECT_FAIL, "Card disconnect fail")
       }
       false
     }
@@ -270,7 +279,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: DeviceException) {
       e.printStackTrace()
       if (e.code == -1) {
-        throw e
+        throw PosException(PosException.CARD_DISCONNECT_FAIL, "Card disconnect fail")
       }
     }
   }

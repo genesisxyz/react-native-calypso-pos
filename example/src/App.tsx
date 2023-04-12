@@ -59,9 +59,17 @@ export default function App() {
 
   useEffect(() => {
     if (!isInitialized) {
-      Pos.init().then(() => {
-        setIsInitialized(true);
-      });
+      Pos.init()
+        .then(() => {
+          setIsInitialized(true);
+        })
+        .catch((e) => {
+          if (Pos.isPosError(e)) {
+            if (e.code === Pos.ErrorCode.SamConnectFail) {
+              console.warn('SAM connect fail');
+            }
+          }
+        });
     }
 
     const cardStatusListener = Pos.addCardStatusListener((event) => {
@@ -70,7 +78,9 @@ export default function App() {
 
     return () => {
       cardStatusListener?.remove();
-      Pos.close();
+      if (isInitialized) {
+        Pos.close();
+      }
     };
   }, [isInitialized]);
 
@@ -106,18 +116,6 @@ export default function App() {
     setIsLoadingWrite(true);
     try {
       const environmentRecord = dataToEnvironmentRecord(data);
-
-      console.warn({
-        emissionDate: format(
-          new Date(environmentRecord.emissionDate),
-          'dd/MM/yyyy HH:mm'
-        ),
-        isExpired: environmentRecord.isExpired,
-        taxCode: environmentRecord.taxCode,
-        circuitIsBIP: environmentRecord.circuitIsBIP,
-        expirationInMonths: environmentRecord.expirationInMonths,
-        dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
-      });
 
       await Pos.writeToCardUpdate(environmentRecord.record, {
         application: EFEnvironmentRecord.AID,
@@ -169,7 +167,6 @@ export default function App() {
             expirationInMonths: environmentRecord.expirationInMonths,
             dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
           });
-          console.warn(environmentRecord.record);
         }
       }
     } catch (e) {

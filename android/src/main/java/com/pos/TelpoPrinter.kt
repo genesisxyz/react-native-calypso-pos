@@ -19,8 +19,8 @@ class TelpoPrinter(reactApplicationContext: ReactApplicationContext): Printer() 
           val status = printer.checkStatus()
           when (status) {
             UsbThermalPrinter.STATUS_NO_PAPER, 16 -> promise.reject(PrinterException.NO_PAPER, "No paper")
-            UsbThermalPrinter.STATUS_OVER_HEAT -> promise.reject(PrinterException(PrinterException.OVER_HEAT, "Overheating"))
-            UsbThermalPrinter.STATUS_OVER_FLOW -> promise.reject(PrinterException(PrinterException.OVER_FLOW, "Overflow"))
+            UsbThermalPrinter.STATUS_OVER_HEAT -> promise.reject(PrinterException(PrinterException.OVERHEAT, "Overheating"))
+            UsbThermalPrinter.STATUS_OVER_FLOW -> promise.reject(PrinterException(PrinterException.OVERFLOW, "Overflow"))
             else -> promise.reject(PrinterException(PrinterException.UNKNOWN, "Unknown"))
           }
 
