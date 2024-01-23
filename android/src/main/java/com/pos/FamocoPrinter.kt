@@ -5,7 +5,7 @@ import android.os.Handler
 import com.cloudpos.DeviceException
 import com.cloudpos.POSTerminal
 import com.cloudpos.printer.PrinterDevice
-import com.cloudpos.sdk.printer.html.PrinterHtmlListener
+import com.cloudpos.printer.PrinterHtmlListener
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 

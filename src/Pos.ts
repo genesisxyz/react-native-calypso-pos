@@ -81,6 +81,7 @@ export async function readRecordsFromCard(options: {
 }): Promise<{
   records: Record<number, number[]>;
   cardId: string;
+  samId: string | null;
 }> {
   return await Pos.readRecordsFromCard({
     ...options,

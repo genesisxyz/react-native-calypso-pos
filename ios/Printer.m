@@ -12,7 +12,7 @@ RCT_EXTERN_METHOD(open:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(close:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(printHtml:(NSString *)html
+RCT_EXTERN_METHOD(printHtml:(NSArray *)printActions
                   withResolver:(RCTPromiseResolveBlock)resolve
                   withRejecter:(RCTPromiseRejectBlock)reject)
 

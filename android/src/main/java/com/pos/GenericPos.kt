@@ -159,10 +159,17 @@ open class GenericPos(private val reactContext: ReactApplicationContext): CardMa
     if (!cardIsConnected) return
     cardIsConnected = try {
       isoDep?.run {
+        // TODO: crash on Android 14, can we use the tag outside the intent?
+        /*
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
           NfcAdapter.getDefaultAdapter(reactContext).ignore(this.tag, 1000, null, null)
         }
-        this.close()
+        */
+        try {
+          this.close()
+        } catch (e: SecurityException) {
+          e.printStackTrace()
+        }
       }
       isoDep = null
       false

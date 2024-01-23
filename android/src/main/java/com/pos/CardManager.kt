@@ -98,6 +98,7 @@ abstract class CardManager {
 
       readableMap.putMap("records", recordsMap)
       readableMap.putString("cardId", cardId)
+      readableMap.putString("samId", samId)
 
       promise.resolve(readableMap)
     } catch (e: Throwable) {

@@ -32,7 +32,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
         if (arg0.resultCode == OperationResult.SUCCESS) {
           samCard = (arg0 as SmartCardReaderOperationResult).card
           val tempSamId = ByteConvertStringUtil.bytesToHexString(samCard.id)
-          if (tempSamId != null) samId = tempSamId.substring(24, 32)
+          if (tempSamId != null) samId = tempSamId.substring(36, 47).replace("\\s+".toRegex(), "")
           cont.resume(Unit)
         }
       } catch (e: Throwable) {

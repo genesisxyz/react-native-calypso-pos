@@ -1,2 +1,2 @@
 configurations.maybeCreate("default")
-artifacts.add("default", file("$rootDir/../../android/libs/cloudpossdkV1.5.3.089_Standard_20220104.aar"))
+artifacts.add("default", file("$rootDir/../../android/libs/cloudpossdkV1.5.4.82_Standard.aar"))

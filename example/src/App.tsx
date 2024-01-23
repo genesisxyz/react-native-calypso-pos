@@ -84,6 +84,22 @@ export default function App() {
     };
   }, [isInitialized]);
 
+  const debugPrint = async () => {
+    const html = await Printer.printHtml([
+      {
+        type: 'text',
+        data: 'Hello, World!',
+        options: {
+          align: Printer.Align.Center,
+          size: 16,
+          fontWeight: Printer.FontWeight.Bold,
+        },
+      },
+    ]);
+
+    console.log(html);
+  };
+
   const printString = async () => {
     setIsLoadingPrint(true);
     const isOpen = await Printer.open();
@@ -179,6 +195,9 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      <Pressable style={styles.button} onPress={debugPrint}>
+        <Text style={styles.text}>DEBUG PRINT</Text>
+      </Pressable>
       <Pressable
         style={styles.button}
         onPress={printString}
