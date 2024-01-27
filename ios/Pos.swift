@@ -2,21 +2,12 @@ import Foundation
 import CoreNFC
 
 @objc(Pos)
-class Pos: NSObject, NFCNDEFReaderSessionDelegate {
-  var session: NFCNDEFReaderSession?
-    
-  override init() {
-    super.init()
-    session = NFCNDEFReaderSession(delegate: self, queue: DispatchQueue.main, invalidateAfterFirstRead: false)
-    session?.begin()
-    if NFCNDEFReaderSession.readingAvailable {
-      print("NFC is avaiable")
-    }
-    else {
-      print("NFC is NOT avaiable")
-    }
-  }
+class Pos: NSObject, NFCTagReaderSessionDelegate {
+  var session: NFCTagReaderSession?
   
+  var resolve: RCTPromiseResolveBlock?
+  var reject: RCTPromiseRejectBlock?
+
   @objc(init:withRejecter:)
   func `init`(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
     resolve(true)
@@ -28,8 +19,15 @@ class Pos: NSObject, NFCNDEFReaderSessionDelegate {
   }
   
   @objc(readCardId:withRejecter:)
-  func readCardId(resolve:RCTPromiseResolveBlock,reject:RCTPromiseRejectBlock) -> Void {
-    // resolve(["samId": "00 00 00", "cardId": "123456789",])
+  func readCardId(resolve:@escaping RCTPromiseResolveBlock, reject:@escaping RCTPromiseRejectBlock) -> Void {
+    if NFCTagReaderSession.readingAvailable {
+      self.resolve = resolve
+      self.reject = reject
+      session = NFCTagReaderSession(pollingOption: NFCTagReaderSession.PollingOption.iso14443, delegate: self)
+      session?.begin()
+    } else {
+      reject("UNKNOWN", "NFC not available", nil)
+    }
   }
   
   @objc(readRecordsFromCard:withResolver:withRejecter:)
@@ -42,6 +40,7 @@ class Pos: NSObject, NFCNDEFReaderSessionDelegate {
       "cardId": "123456789",
     ])
     */
+    reject("UNKNOWN", "TODO: implementation missing", nil)
   }
   
   @objc(writeToCardUpdate:withOptions:withResolver:withRejecter:)
@@ -49,19 +48,63 @@ class Pos: NSObject, NFCNDEFReaderSessionDelegate {
       resolve(nil)
   }
   
-  // MARK: NFCNDEFReaderSessionDelegate
+  // MARK: NFCTagReaderSessionDelegate
   
-  func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
-    
+  func tagReaderSessionDidBecomeActive(_ session: NFCTagReaderSession) {
+
   }
   
-  func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
-    for message in messages {
-      for record in message.records {
-        if let string = String(data: record.payload, encoding: .ascii) {
-          print(string)
+  func tagReaderSession(_ session: NFCTagReaderSession, didInvalidateWithError error: Error) {
+    reject?("UNKNOWN", "Session closed", nil)
+    resolve = nil
+    reject = nil
+  }
+  
+  func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
+    if case let NFCTag.iso7816(tag) = tags.first! {
+      let tagUIDData = tag.identifier
+      var byteData: [UInt8] = []
+      tagUIDData.withUnsafeBytes { byteData.append(contentsOf: $0) }
+      var n = ""
+      for byte in byteData {
+        let decimalNumber = String(byte & 0xFF, radix: 16)
+        n.append(decimalNumber)
+      }
+      
+      if (resolve != nil) {
+        resolve?(
+          [
+            "samId": nil,
+            "cardId": UInt64(n, radix: 16),
+          ]
+        )
+        resolve = nil
+        reject = nil
+        session.invalidate()
+      }
+
+    }
+    else if case let NFCTag.miFare(tag) = tags.first! {
+        let tagUIDData = tag.identifier
+        var byteData: [UInt8] = []
+        tagUIDData.withUnsafeBytes { byteData.append(contentsOf: $0) }
+        var n = ""
+        for byte in byteData {
+          let decimalNumber = String(byte & 0xFF, radix: 16)
+          n.append(decimalNumber)
+        }
+        
+        if (resolve != nil) {
+          resolve?(
+            [
+              "samId": nil,
+              "cardId": UInt64(n, radix: 16),
+            ]
+          )
+          resolve = nil
+          reject = nil
+          session.invalidate()
         }
       }
-    }
   }
 }
