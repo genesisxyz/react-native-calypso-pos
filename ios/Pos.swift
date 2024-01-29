@@ -15,7 +15,10 @@ class Pos: NSObject, NFCTagReaderSessionDelegate {
   
   @objc(close)
   func close() -> Void {
-    
+    resolve = nil
+    reject = nil
+    session?.invalidate()
+    session = nil
   }
   
   @objc(readCardId:withRejecter:)
@@ -58,10 +61,13 @@ class Pos: NSObject, NFCTagReaderSessionDelegate {
     reject?("UNKNOWN", "Session closed", nil)
     resolve = nil
     reject = nil
+    self.session = nil
   }
   
   func tagReaderSession(_ session: NFCTagReaderSession, didDetect tags: [NFCTag]) {
     if case let NFCTag.iso7816(tag) = tags.first! {
+      MyEventEmitter.shared?.cardStatus(status: "detected")
+      
       let tagUIDData = tag.identifier
       var byteData: [UInt8] = []
       tagUIDData.withUnsafeBytes { byteData.append(contentsOf: $0) }
@@ -71,40 +77,37 @@ class Pos: NSObject, NFCTagReaderSessionDelegate {
         n.append(decimalNumber)
       }
       
-      if (resolve != nil) {
-        resolve?(
-          [
-            "samId": nil,
-            "cardId": UInt64(n, radix: 16),
-          ]
-        )
-        resolve = nil
-        reject = nil
-        session.invalidate()
-      }
-
+      resolve?(
+        [
+          "samId": nil,
+          "cardId": UInt64(n, radix: 16),
+        ]
+      )
+      resolve = nil
+      reject = nil
+      session.invalidate()
     }
     else if case let NFCTag.miFare(tag) = tags.first! {
-        let tagUIDData = tag.identifier
-        var byteData: [UInt8] = []
-        tagUIDData.withUnsafeBytes { byteData.append(contentsOf: $0) }
-        var n = ""
-        for byte in byteData {
-          let decimalNumber = String(byte & 0xFF, radix: 16)
-          n.append(decimalNumber)
-        }
-        
-        if (resolve != nil) {
-          resolve?(
-            [
-              "samId": nil,
-              "cardId": UInt64(n, radix: 16),
-            ]
-          )
-          resolve = nil
-          reject = nil
-          session.invalidate()
-        }
+      MyEventEmitter.shared?.cardStatus(status: "detected")
+      
+      let tagUIDData = tag.identifier
+      var byteData: [UInt8] = []
+      tagUIDData.withUnsafeBytes { byteData.append(contentsOf: $0) }
+      var n = ""
+      for byte in byteData {
+        let decimalNumber = String(byte & 0xFF, radix: 16)
+        n.append(decimalNumber)
       }
+      
+      resolve?(
+        [
+          "samId": nil,
+          "cardId": UInt64(n, radix: 16),
+        ]
+      )
+      resolve = nil
+      reject = nil
+      session.invalidate()
+    }
   }
 }

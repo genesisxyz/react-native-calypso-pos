@@ -107,9 +107,10 @@ export async function writeToCardUpdate(
 export function addCardStatusListener(
   listener: (event: { status: 'detected' }) => void
 ) {
-  if (Platform.OS === 'android') {
-    const eventEmitter = new NativeEventEmitter();
+  if (Platform.OS === 'ios') {
+    const eventEmitter = new NativeEventEmitter(NativeModules.MyEventEmitter);
     return eventEmitter.addListener('CardStatus', listener);
   }
-  return null;
+  const eventEmitter = new NativeEventEmitter();
+  return eventEmitter.addListener('CardStatus', listener);
 }
