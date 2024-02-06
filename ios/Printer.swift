@@ -4,17 +4,17 @@ import Foundation
 class Printer: NSObject {
   @objc(print:withResolver:withRejecter:)
   func print(printActions: NSArray, resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
-    resolve(true)
+    reject("UNKNOWN", "TODO: implementation missing", nil)
   }
     
   @objc(open:withRejecter:)
   func open(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
-    resolve(true)
+    resolve(false)
   }
 
   @objc(close:withRejecter:)
   func close(resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) -> Void {
-    resolve(true)
+    resolve(false)
   }
     
   // TODO: review this code, ChatGPT wrote it

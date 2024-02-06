@@ -78,15 +78,17 @@ export async function readRecordsFromCard(options: {
   sfi: number;
   offset: number;
   readMode: ReadMode;
-}): Promise<{
+}[]): Promise<{
   records: Record<number, number[]>;
   cardId: string;
   samId: string | null;
-}> {
-  return await Pos.readRecordsFromCard({
-    ...options,
-    application: Array.from(options.application),
-  });
+}[]> {
+  return await Pos.readRecordsFromCard(
+    options.map(e => ({
+      ...e,
+      application: Array.from(e.application),
+    }))
+  );
 }
 
 export async function writeToCardUpdate(

@@ -186,7 +186,7 @@ open class GenericPos(private val reactContext: ReactApplicationContext): CardMa
 
   }
 
-  override suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
+  override suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
       super.readRecordsFromCard(options, promise)
     }

@@ -116,7 +116,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     }
   }
 
-  override suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
+  override suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
     try {
       openCardReader()
       super.readRecordsFromCard(options, promise)

@@ -69,38 +69,45 @@ abstract class CardManager {
     }
   }
 
-  open suspend fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
-    val application = options.getArray("application")!!
-    val sfi = options.getInt("sfi")
-    val offset = options.getInt("offset")
-    val readMode = when (options.getInt("readMode")) {
-      1 -> CardReadRecordsBuilder.ReadMode.MULTIPLE_RECORD
-      else -> CardReadRecordsBuilder.ReadMode.ONE_RECORD
-    }
+  open suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
+    val readableArray = Arguments.createArray()
 
     try {
-      waitForCard()
-      connectCard()
+      options.toArrayList().forEach {
+        it as HashMap<*, *>
+        val application = it["application"] as ArrayList<Int>
+        val sfi = (it["sfi"] as Double).toInt()
+        val offset = (it["offset"] as Double).toInt()
+        val readMode = when ((it["readMode"] as Double).toInt()) {
+          1 -> CardReadRecordsBuilder.ReadMode.MULTIPLE_RECORD
+          else -> CardReadRecordsBuilder.ReadMode.ONE_RECORD
+        }
 
-      selectApplication(ByteConvertReactNativeUtil.readableArrayToByteArray(application))
-      selectFileBuilder()
-      val readRecordsParser = readRecordsFromSfi(sfi, offset, readMode)
+        waitForCard()
+        connectCard()
 
-      val records: Map<Int, ByteArray> = readRecordsParser.records
+        selectApplication(application.map { it.toByte() }.toByteArray())
+        selectFileBuilder()
+        val readRecordsParser = readRecordsFromSfi(sfi, offset, readMode)
 
-      val readableMap = Arguments.createMap()
-      val recordsMap = Arguments.createMap()
+        val records: Map<Int, ByteArray> = readRecordsParser.records
 
-      for ((key, record) in records) {
-        val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
-        recordsMap.putArray(key.toString(), array)
+        val readableMap = Arguments.createMap()
+        val recordsMap = Arguments.createMap()
+
+        for ((key, record) in records) {
+          val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
+          recordsMap.putArray(key.toString(), array)
+        }
+
+        readableMap.putMap("records", recordsMap)
+        readableMap.putString("cardId", cardId)
+        readableMap.putString("samId", samId)
+
+        readableArray.pushMap(readableMap)
       }
 
-      readableMap.putMap("records", recordsMap)
-      readableMap.putString("cardId", cardId)
-      readableMap.putString("samId", samId)
-
-      promise.resolve(readableMap)
+      promise.resolve(readableArray)
     } catch (e: Throwable) {
       e.printStackTrace()
       promise.reject(
@@ -113,6 +120,8 @@ abstract class CardManager {
     } finally {
       disconnectCard()
     }
+
+
   }
 
   open suspend fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {

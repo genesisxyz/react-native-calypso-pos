@@ -12,7 +12,9 @@ import { Printer, Pos } from 'react-native-pos';
 
 import data from './data.json';
 import { format } from 'date-fns';
-import { EFEnvironmentRecord } from './BIP/EFEnvironmentRecord';
+import { EFEnvironment } from './BIP/EFEnvironmentRecord';
+import { EFContractList } from './BIP/EFContractList';
+import { EFContract } from './BIP/EFContract';
 
 enum Profile {
   Ordinary = '700',
@@ -38,14 +40,14 @@ function dataToEnvironmentRecord(user: typeof data) {
     }
   }
 
-  const environmentRecord = EFEnvironmentRecord.fromData({
-    dataFormat: EFEnvironmentRecord.CardDataFormat.BIPv3_1,
+  const environmentRecord = EFEnvironment.Record.fromData({
+    dataFormat: EFEnvironment.CardDataFormat.BIPv3_1,
     agencyCode: '05',
     userCode: user.id,
     userProfile,
-    cardStatus: EFEnvironmentRecord.CardStatus.Personalized,
+    cardStatus: EFEnvironment.CardStatus.Personalized,
     taxCode: data.fiscal_code.toUpperCase(),
-    cardCircuit: EFEnvironmentRecord.CardCircuit.BIP,
+    cardCircuit: EFEnvironment.CardCircuit.BIP,
   });
 
   return environmentRecord;
@@ -134,8 +136,8 @@ export default function App() {
       const environmentRecord = dataToEnvironmentRecord(data);
 
       await Pos.writeToCardUpdate(environmentRecord.record, {
-        application: EFEnvironmentRecord.AID,
-        sfi: EFEnvironmentRecord.SFI,
+        application: EFEnvironment.Record.AID,
+        sfi: EFEnvironment.Record.SFI,
         offset: 1,
         samUnlockString: '62 EE D0 33 FB 9F D1 85 B3 C7 DA BD 02 82 D6 EC',
       });
@@ -159,32 +161,48 @@ export default function App() {
   const read = async () => {
     setIsLoadingRead(true);
     try {
-      const { records, cardId } = await Pos.readRecordsFromCard({
-        application: EFEnvironmentRecord.AID,
-        sfi: EFEnvironmentRecord.SFI,
-        offset: 1,
-        readMode: Pos.ReadMode.OneRecord,
-      });
-      for (const key in records) {
-        if (Object.prototype.hasOwnProperty.call(records, key)) {
-          const record = records[key]!;
+      const result = await Pos.readRecordsFromCard([
+        {
+          application: EFContractList.Record.AID,
+          sfi: EFContractList.Record.SFI,
+          offset: 1,
+          readMode: Pos.ReadMode.OneRecord,
+        },
+        {
+          application: EFContract.Record.AID,
+          sfi: EFContract.Record.SFI,
+          offset: 1,
+          readMode: Pos.ReadMode.MultipleRecords,
+        }
+      ]);
 
-          const environmentRecord = new EFEnvironmentRecord(record);
+      for (const e of result) {
+        let i = 0;
+        for (const key in e.records) {
+          if (Object.prototype.hasOwnProperty.call(e.records, key)) {
+            const record = e.records[key]!;
 
-          console.warn({
-            cardId,
-            emissionDate: format(
-              new Date(environmentRecord.emissionDate),
-              'dd/MM/yyyy HH:mm'
-            ),
-            isExpired: environmentRecord.isExpired,
-            taxCode: environmentRecord.taxCode,
-            circuitIsBIP: environmentRecord.circuitIsBIP,
-            expirationInMonths: environmentRecord.expirationInMonths,
-            dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
-          });
+            console.warn(record, ++i);
+
+            // const environmentRecord = new EFEnvironment.Record(record);
+
+            /*
+            console.warn({
+              cardId,
+              emissionDate: format(
+                new Date(environmentRecord.emissionDate),
+                'dd/MM/yyyy HH:mm'
+              ),
+              isExpired: environmentRecord.isExpired,
+              taxCode: environmentRecord.taxCode,
+              circuitIsBIP: environmentRecord.circuitIsBIP,
+              expirationInMonths: environmentRecord.expirationInMonths,
+              dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
+            });*/
+          }
         }
       }
+
     } catch (e) {
       console.warn(e);
     }

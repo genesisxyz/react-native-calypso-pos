@@ -68,7 +68,7 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
   @ReactMethod
   @OptIn(DelicateCoroutinesApi::class)
-  fun readRecordsFromCard(options: ReadableMap, promise: Promise) {
+  fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
     GlobalScope.launch {
       device?.readRecordsFromCard(options, promise)
     }
