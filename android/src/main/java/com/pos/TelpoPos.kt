@@ -41,9 +41,9 @@ class TelpoPos(private val reactContext: ReactApplicationContext) : GenericPos(r
     }
   }
 
-  override suspend fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
+  override suspend fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-      super.writeToCardUpdate(apdu, options, promise)
+      super.writeToCardUpdate(options, promise)
     }
   }
 

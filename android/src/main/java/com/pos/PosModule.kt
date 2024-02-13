@@ -60,9 +60,9 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
 
   @ReactMethod
   @OptIn(DelicateCoroutinesApi::class)
-  fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
+  fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
     GlobalScope.launch {
-      device?.writeToCardUpdate(apdu, options, promise)
+      device?.writeToCardUpdate(options, promise)
     }
   }
 

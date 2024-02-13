@@ -71,8 +71,14 @@ abstract class CardManager {
 
   open suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
     val readableArray = Arguments.createArray()
+    val readableMap =  Arguments.createMap()
+    readableMap.putString("cardId", cardId)
+    readableMap.putString("samId", samId)
 
     try {
+      waitForCard()
+      connectCard()
+
       options.toArrayList().forEach {
         it as HashMap<*, *>
         val application = it["application"] as ArrayList<Int>
@@ -83,16 +89,13 @@ abstract class CardManager {
           else -> CardReadRecordsBuilder.ReadMode.ONE_RECORD
         }
 
-        waitForCard()
-        connectCard()
-
         selectApplication(application.map { it.toByte() }.toByteArray())
         selectFileBuilder()
         val readRecordsParser = readRecordsFromSfi(sfi, offset, readMode)
 
         val records: Map<Int, ByteArray> = readRecordsParser.records
 
-        val readableMap = Arguments.createMap()
+        val resultMap = Arguments.createMap()
         val recordsMap = Arguments.createMap()
 
         for ((key, record) in records) {
@@ -100,14 +103,14 @@ abstract class CardManager {
           recordsMap.putArray(key.toString(), array)
         }
 
-        readableMap.putMap("records", recordsMap)
-        readableMap.putString("cardId", cardId)
-        readableMap.putString("samId", samId)
+        resultMap.putInt("sfi", sfi)
+        resultMap.putMap("records", recordsMap)
 
-        readableArray.pushMap(readableMap)
+        readableArray.pushMap(resultMap)
       }
 
-      promise.resolve(readableArray)
+      readableMap.putArray("data", readableArray)
+      promise.resolve(readableMap)
     } catch (e: Throwable) {
       e.printStackTrace()
       promise.reject(
@@ -120,33 +123,35 @@ abstract class CardManager {
     } finally {
       disconnectCard()
     }
-
-
   }
 
-  open suspend fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
-    val application = options.getArray("application")!!;
-    val sfi = options.getInt("sfi")
-    val offset = options.getInt("offset")
-    val samUnlockString = options.getString("samUnlockString")!!
-
+  open suspend fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
     try {
       connectSam()
       waitForCard()
       connectCard()
 
-      val newRecord = (apdu.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray();
+      options.toArrayList().forEach {
+        it as HashMap<*, *>
+        val apdu = it["apdu"] as ArrayList<Int>
+        val application = it["application"] as ArrayList<Int>
+        val sfi = (it["sfi"] as Double).toInt()
+        val offset = (it["offset"] as Double).toInt()
+        val samUnlockString = it["samUnlockString"] as String
 
-      val selectApplicationParser = selectApplication(ByteConvertReactNativeUtil.readableArrayToByteArray(application))
-      unlockSam(samUnlockString)
-      selectSamDiversifier(selectApplicationParser)
-      val samChallengeParser = samChallenge()
-      val openSession3Parser = openSession3(samChallengeParser, sfi, offset)
-      samDigestInit(openSession3Parser)
-      updateRecord(sfi, offset, newRecord)
-      val samDigestCloseParser = samDigestClose()
-      val closeSession3Parser = closeSession3(samDigestCloseParser)
-      samDigestAuthenticate(closeSession3Parser)
+        val newRecord = apdu.map { it.toByte() }.toByteArray();
+
+        val selectApplicationParser = selectApplication(ByteConvertReactNativeUtil.arrayListToByteArray(application))
+        unlockSam(samUnlockString)
+        selectSamDiversifier(selectApplicationParser)
+        val samChallengeParser = samChallenge()
+        val openSession3Parser = openSession3(samChallengeParser, sfi, offset)
+        samDigestInit(openSession3Parser)
+        updateRecord(sfi, offset, newRecord)
+        val samDigestCloseParser = samDigestClose()
+        val closeSession3Parser = closeSession3(samDigestCloseParser)
+        samDigestAuthenticate(closeSession3Parser)
+      }
 
       promise.resolve(true)
     } catch (e: Exception) {

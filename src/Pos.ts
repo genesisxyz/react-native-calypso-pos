@@ -73,18 +73,23 @@ export async function readCardId(): Promise<{ samId: string; cardId: string }> {
   return await Pos.readCardId();
 }
 
-export async function readRecordsFromCard(options: {
-  application: Uint8Array;
-  sfi: number;
-  offset: number;
-  readMode: ReadMode;
-}[]): Promise<{
-  records: Record<number, number[]>;
+export async function readRecordsFromCard(
+  options: {
+    application: Uint8Array;
+    sfi: number;
+    offset: number;
+    readMode: ReadMode;
+  }[]
+): Promise<{
   cardId: string;
   samId: string | null;
-}[]> {
+  data: {
+    sfi: number;
+    records: Record<number, number[]>;
+  }[];
+}> {
   return await Pos.readRecordsFromCard(
-    options.map(e => ({
+    options.map((e) => ({
       ...e,
       application: Array.from(e.application),
     }))
@@ -92,18 +97,21 @@ export async function readRecordsFromCard(options: {
 }
 
 export async function writeToCardUpdate(
-  adpu: Uint8Array,
   options: {
+    apdu: Uint8Array;
     application: Uint8Array;
     sfi: number;
     offset: number;
     samUnlockString: string;
-  }
+  }[]
 ): Promise<void> {
-  return await Pos.writeToCardUpdate(Array.from(adpu), {
-    ...options,
-    application: Array.from(options.application),
-  });
+  return await Pos.writeToCardUpdate(
+    options.map((e) => ({
+      ...e,
+      apdu: Array.from(e.apdu),
+      application: Array.from(e.application),
+    }))
+  );
 }
 
 export function addCardStatusListener(

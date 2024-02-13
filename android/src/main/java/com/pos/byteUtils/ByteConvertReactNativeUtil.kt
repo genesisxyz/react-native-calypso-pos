@@ -17,5 +17,10 @@ class ByteConvertReactNativeUtil {
       val bytes = (array.toArrayList() as ArrayList<Int>).map { it.toByte() }.toByteArray()
       return bytes
     }
+
+    fun arrayListToByteArray(array: ArrayList<Int>): ByteArray {
+      val bytes = array.map { it.toByte() }.toByteArray()
+      return bytes
+    }
   }
 }

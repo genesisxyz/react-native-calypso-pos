@@ -129,11 +129,11 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     }
   }
 
-  override suspend fun writeToCardUpdate(apdu: ReadableArray, options: ReadableMap, promise: Promise) {
+  override suspend fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
     try {
       openSamReader()
       openCardReader()
-      super.writeToCardUpdate(apdu, options, promise)
+      super.writeToCardUpdate(options, promise)
       closeCardReader()
       closeSamReader()
     } catch (e: Throwable) {

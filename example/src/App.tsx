@@ -10,48 +10,14 @@ import {
 } from 'react-native';
 import { Printer, Pos } from 'react-native-pos';
 
-import data from './data.json';
-import { format } from 'date-fns';
-import { EFEnvironment } from './BIP/EFEnvironmentRecord';
-import { EFContractList } from './BIP/EFContractList';
-import { EFContract } from './BIP/EFContract';
+const SAM_UNLOCK_STRING = '';
+const AID = byteArrayFromHex('');
+const SFI = 0x07;
+const OFFSET = 1;
 
-enum Profile {
-  Ordinary = '700',
-  Over65 = '702',
-  Under25 = '700',
-  Student = '701',
-}
-
-function dataToEnvironmentRecord(user: typeof data) {
-  let userProfile = Profile.Ordinary;
-
-  if (user.profile_type) {
-    switch (user.profile_type) {
-      case '65':
-        userProfile = Profile.Over65;
-        break;
-      case '25':
-        userProfile = Profile.Under25;
-        break;
-      case 'ST':
-        userProfile = Profile.Student;
-        break;
-    }
-  }
-
-  const environmentRecord = EFEnvironment.Record.fromData({
-    dataFormat: EFEnvironment.CardDataFormat.BIPv3_1,
-    agencyCode: '05',
-    userCode: user.id,
-    userProfile,
-    cardStatus: EFEnvironment.CardStatus.Personalized,
-    taxCode: data.fiscal_code.toUpperCase(),
-    cardCircuit: EFEnvironment.CardCircuit.BIP,
-  });
-
-  return environmentRecord;
-}
+const RECORD_DATA = byteArrayFromHex(
+  '000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c'
+);
 
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
@@ -131,16 +97,23 @@ export default function App() {
   };
 
   const write = async () => {
+    if (SAM_UNLOCK_STRING.length === 0) {
+      console.warn('Please set SAM_UNLOCK_STRING');
+      return;
+    }
     setIsLoadingWrite(true);
     try {
-      const environmentRecord = dataToEnvironmentRecord(data);
+      await Pos.writeToCardUpdate([
+        {
+          apdu: RECORD_DATA,
+          application: AID,
+          sfi: SFI,
+          offset: OFFSET,
+          samUnlockString: SAM_UNLOCK_STRING,
+        },
+      ]);
 
-      await Pos.writeToCardUpdate(environmentRecord.record, {
-        application: EFEnvironment.Record.AID,
-        sfi: EFEnvironment.Record.SFI,
-        offset: 1,
-        samUnlockString: '62 EE D0 33 FB 9F D1 85 B3 C7 DA BD 02 82 D6 EC',
-      });
+      console.warn(`Wrote ${RECORD_DATA} to file ${SFI} on offset ${OFFSET}`);
     } catch (e) {
       console.warn(e);
     }
@@ -163,46 +136,14 @@ export default function App() {
     try {
       const result = await Pos.readRecordsFromCard([
         {
-          application: EFContractList.Record.AID,
-          sfi: EFContractList.Record.SFI,
+          application: AID,
+          sfi: SFI,
           offset: 1,
           readMode: Pos.ReadMode.OneRecord,
         },
-        {
-          application: EFContract.Record.AID,
-          sfi: EFContract.Record.SFI,
-          offset: 1,
-          readMode: Pos.ReadMode.MultipleRecords,
-        }
       ]);
 
-      for (const e of result) {
-        let i = 0;
-        for (const key in e.records) {
-          if (Object.prototype.hasOwnProperty.call(e.records, key)) {
-            const record = e.records[key]!;
-
-            console.warn(record, ++i);
-
-            // const environmentRecord = new EFEnvironment.Record(record);
-
-            /*
-            console.warn({
-              cardId,
-              emissionDate: format(
-                new Date(environmentRecord.emissionDate),
-                'dd/MM/yyyy HH:mm'
-              ),
-              isExpired: environmentRecord.isExpired,
-              taxCode: environmentRecord.taxCode,
-              circuitIsBIP: environmentRecord.circuitIsBIP,
-              expirationInMonths: environmentRecord.expirationInMonths,
-              dataFormatIsBIP: environmentRecord.dataFormatIsBIP,
-            });*/
-          }
-        }
-      }
-
+      console.log(JSON.stringify(result));
     } catch (e) {
       console.warn(e);
     }
@@ -258,6 +199,10 @@ export default function App() {
       </Pressable>
     </View>
   );
+}
+
+export function byteArrayFromHex(recordHex: string) {
+  return new Uint8Array(recordHex.match(/../g)!.map((e) => parseInt(e, 16)));
 }
 
 const styles = StyleSheet.create({
