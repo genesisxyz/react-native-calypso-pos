@@ -70,47 +70,11 @@ abstract class CardManager {
   }
 
   open suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
-    val readableArray = Arguments.createArray()
-    val readableMap =  Arguments.createMap()
-    readableMap.putString("cardId", cardId)
-    readableMap.putString("samId", samId)
-
     try {
       waitForCard()
       connectCard()
 
-      options.toArrayList().forEach {
-        it as HashMap<*, *>
-        val application = it["application"] as ArrayList<Int>
-        val sfi = (it["sfi"] as Double).toInt()
-        val offset = (it["offset"] as Double).toInt()
-        val readMode = when ((it["readMode"] as Double).toInt()) {
-          1 -> CardReadRecordsBuilder.ReadMode.MULTIPLE_RECORD
-          else -> CardReadRecordsBuilder.ReadMode.ONE_RECORD
-        }
-
-        selectApplication(application.map { it.toByte() }.toByteArray())
-        selectFileBuilder()
-        val readRecordsParser = readRecordsFromSfi(sfi, offset, readMode)
-
-        val records: Map<Int, ByteArray> = readRecordsParser.records
-
-        val resultMap = Arguments.createMap()
-        val recordsMap = Arguments.createMap()
-
-        for ((key, record) in records) {
-          val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
-          recordsMap.putArray(key.toString(), array)
-        }
-
-        resultMap.putInt("sfi", sfi)
-        resultMap.putMap("records", recordsMap)
-
-        readableArray.pushMap(resultMap)
-      }
-
-      readableMap.putArray("data", readableArray)
-      promise.resolve(readableMap)
+      read(options, promise)
     } catch (e: Throwable) {
       e.printStackTrace()
       promise.reject(
@@ -131,29 +95,7 @@ abstract class CardManager {
       waitForCard()
       connectCard()
 
-      options.toArrayList().forEach {
-        it as HashMap<*, *>
-        val apdu = it["apdu"] as ArrayList<Int>
-        val application = it["application"] as ArrayList<Int>
-        val sfi = (it["sfi"] as Double).toInt()
-        val offset = (it["offset"] as Double).toInt()
-        val samUnlockString = it["samUnlockString"] as String
-
-        val newRecord = apdu.map { it.toByte() }.toByteArray();
-
-        val selectApplicationParser = selectApplication(ByteConvertReactNativeUtil.arrayListToByteArray(application))
-        unlockSam(samUnlockString)
-        selectSamDiversifier(selectApplicationParser)
-        val samChallengeParser = samChallenge()
-        val openSession3Parser = openSession3(samChallengeParser, sfi, offset)
-        samDigestInit(openSession3Parser)
-        updateRecord(sfi, offset, newRecord)
-        val samDigestCloseParser = samDigestClose()
-        val closeSession3Parser = closeSession3(samDigestCloseParser)
-        samDigestAuthenticate(closeSession3Parser)
-      }
-
-      promise.resolve(true)
+      write(options, promise)
     } catch (e: Exception) {
       when (e) {
         is PosException -> promise.reject(e.code, e.message)
@@ -164,6 +106,104 @@ abstract class CardManager {
       disconnectCard()
     }
   }
+
+  // region Unsafe methods for custom workflows
+
+  protected fun read(options: ReadableArray, promise: Promise) {
+    val readableArray = Arguments.createArray()
+    val readableMap =  Arguments.createMap()
+    readableMap.putString("cardId", cardId)
+    readableMap.putString("samId", samId)
+
+    options.toArrayList().forEach {
+      it as HashMap<*, *>
+      val application = it["application"] as ArrayList<Int>
+      val sfi = (it["sfi"] as Double).toInt()
+      val offset = (it["offset"] as Double).toInt()
+      val readMode = when ((it["readMode"] as Double).toInt()) {
+        1 -> CardReadRecordsBuilder.ReadMode.MULTIPLE_RECORD
+        else -> CardReadRecordsBuilder.ReadMode.ONE_RECORD
+      }
+
+      selectApplication(application.map { it.toByte() }.toByteArray())
+      selectFileBuilder()
+      val readRecordsParser = readRecordsFromSfi(sfi, offset, readMode)
+
+      val records: Map<Int, ByteArray> = readRecordsParser.records
+
+      val resultMap = Arguments.createMap()
+      val recordsMap = Arguments.createMap()
+
+      for ((key, record) in records) {
+        val array = ByteConvertReactNativeUtil.byteArrayToReadableArray(record)
+        recordsMap.putArray(key.toString(), array)
+      }
+
+      resultMap.putInt("sfi", sfi)
+      resultMap.putMap("records", recordsMap)
+
+      readableArray.pushMap(resultMap)
+    }
+
+    readableMap.putArray("data", readableArray)
+    promise.resolve(readableMap)
+  }
+
+  protected fun write(options: ReadableArray, promise: Promise) {
+    options.toArrayList().forEach {
+      it as HashMap<*, *>
+      val apdu = it["apdu"] as ArrayList<Int>
+      val application = it["application"] as ArrayList<Int>
+      val sfi = (it["sfi"] as Double).toInt()
+      val offset = (it["offset"] as Double).toInt()
+      val samUnlockString = it["samUnlockString"] as String
+
+      val newRecord = apdu.map { it.toByte() }.toByteArray();
+
+      val selectApplicationParser = selectApplication(ByteConvertReactNativeUtil.arrayListToByteArray(application))
+      unlockSam(samUnlockString)
+      selectSamDiversifier(selectApplicationParser)
+      val samChallengeParser = samChallenge()
+      val openSession3Parser = openSession3(samChallengeParser, sfi, offset)
+      samDigestInit(openSession3Parser)
+      updateRecord(sfi, offset, newRecord)
+      val samDigestCloseParser = samDigestClose()
+      val closeSession3Parser = closeSession3(samDigestCloseParser)
+      samDigestAuthenticate(closeSession3Parser)
+    }
+
+    promise.resolve(true)
+  }
+
+  fun unsafeConnectSam() {
+    connectSam()
+  }
+
+  open suspend fun unsafeWaitForCard(promise: Promise) {
+    waitForCard()
+  }
+
+  fun unsafeConnectCard() {
+    connectCard()
+  }
+
+  fun unsafeRead(options: ReadableArray, promise: Promise) {
+    read(options, promise)
+  }
+
+  fun unsafeWrite(options: ReadableArray, promise: Promise) {
+    write(options, promise)
+  }
+
+  fun unsafeDisconnectSam() {
+    disconnectSam()
+  }
+
+  fun unsafeDisconnectCard() {
+    disconnectCard()
+  }
+
+  // endregion
 
   private fun selectApplication(application: ByteArray): SelectApplicationParser {
     val selectApplicationBuilder = SelectApplicationBuilder(

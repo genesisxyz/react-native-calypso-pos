@@ -74,6 +74,44 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
     }
   }
 
+  @ReactMethod
+  fun unsafeConnectSam() {
+    device?.unsafeConnectSam()
+  }
+
+  @ReactMethod
+  @OptIn(DelicateCoroutinesApi::class)
+  fun unsafeWaitForCard(promise: Promise) {
+    GlobalScope.launch {
+      device?.unsafeWaitForCard(promise)
+    }
+  }
+
+  @ReactMethod
+    fun unsafeConnectCard() {
+    device?.unsafeConnectCard()
+  }
+
+  @ReactMethod
+  fun unsafeRead(options: ReadableArray, promise: Promise) {
+    device?.unsafeRead(options, promise)
+  }
+
+  @ReactMethod
+  fun unsafeWrite(options: ReadableArray, promise: Promise) {
+    device?.unsafeWrite(options, promise)
+  }
+
+  @ReactMethod
+  fun unsafeDisconnectSam() {
+    device?.unsafeDisconnectSam()
+  }
+
+  @ReactMethod
+  fun unsafeDisconnectCard() {
+    device?.unsafeDisconnectCard()
+  }
+
   companion object {
     const val NAME = "Pos"
   }

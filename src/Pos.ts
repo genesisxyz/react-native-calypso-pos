@@ -114,6 +114,62 @@ export async function writeToCardUpdate(
   );
 }
 
+export async function read(
+  options: {
+    application: Uint8Array;
+    sfi: number;
+    offset: number;
+    readMode: ReadMode;
+  }[]
+): Promise<{
+  cardId: string;
+  samId: string | null;
+  data: {
+    sfi: number;
+    records: Record<number, number[]>;
+  }[];
+}> {
+  return await Pos.unsafeRead(
+    options.map((e) => ({
+      ...e,
+      application: Array.from(e.application),
+    }))
+  );
+}
+
+export async function write(
+  options: {
+    apdu: Uint8Array;
+    application: Uint8Array;
+    sfi: number;
+    offset: number;
+    samUnlockString: string;
+  }[]
+): Promise<void> {
+  return await Pos.unsafeWrite(
+    options.map((e) => ({
+      ...e,
+      apdu: Array.from(e.apdu),
+      application: Array.from(e.application),
+    }))
+  );
+}
+
+export async function withBlock(block: () => Promise<void>) {
+  try {
+    Pos.unsafeConnectSam();
+    await Pos.unsafeWaitForCard();
+    Pos.unsafeConnectCard();
+    await block();
+  } catch (error) {
+    throw error;
+  } finally {
+    console.log('DONE');
+    Pos.unsafeDisconnectSam();
+    Pos.unsafeDisconnectCard();
+  }
+}
+
 export function addCardStatusListener(
   listener: (event: { status: 'detected' }) => void
 ) {
