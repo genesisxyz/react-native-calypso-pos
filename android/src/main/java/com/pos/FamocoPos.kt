@@ -1,6 +1,10 @@
 package com.pos
 
-import com.cloudpos.*
+import com.cloudpos.DeviceException
+import com.cloudpos.OperationListener
+import com.cloudpos.OperationResult
+import com.cloudpos.POSTerminal
+import com.cloudpos.TimeConstants
 import com.cloudpos.card.CPUCard
 import com.cloudpos.card.Card
 import com.cloudpos.rfcardreader.RFCardReaderDevice
@@ -11,7 +15,6 @@ import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReadableArray
-import com.facebook.react.bridge.ReadableMap
 import com.pos.byteUtils.ByteConvertStringUtil
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -195,17 +198,26 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
   }
 
   override fun disconnectCard() {
+    cardIsConnected = false
+    // TODO: is this safe? should we remove this block below?
+    /*
     if (!cardIsConnected) return
-    cardIsConnected = try {
-      (rfCard as CPUCard).disconnect()
-      false
-    } catch (e: DeviceException) {
-      e.printStackTrace()
-      if (e.code == -1) {
-        throw PosException(PosException.CARD_DISCONNECT_FAIL, "Card disconnect fail")
+    // we need a thread because otherwise it blocks the main thread until we move the card away from the reader
+    // TODO: why does GlobalScope work and a normal thread doesn't?
+    GlobalScope.launch {
+      cardIsConnected = try {
+        (rfCard as CPUCard).disconnect()
+        false
+      } catch (e: DeviceException) {
+        e.printStackTrace()
+        if (e.code == -1) {
+          // TODO: do we actually care about this?
+          throw PosException(PosException.CARD_DISCONNECT_FAIL, "Card disconnect fail")
+        }
+        false
       }
-      false
     }
+    */
   }
 
   override fun transmitToCard(apdu: ByteArray): ByteArray? {
@@ -298,5 +310,26 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     } catch (e: Exception) {
       e.printStackTrace()
     }
+  }
+
+  override fun unsafeConnectSam() {
+    openSamReader()
+    super.unsafeConnectSam()
+  }
+
+  override fun unsafeDisconnectSam() {
+    super.unsafeDisconnectSam()
+    closeSamReader()
+  }
+
+  override suspend fun unsafeWaitForCard(promise: Promise) {
+    openCardReader()
+    waitForCard()
+    promise.resolve(true)
+  }
+
+  override fun unsafeDisconnectCard() {
+    super.unsafeDisconnectCard()
+    closeCardReader()
   }
 }

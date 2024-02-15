@@ -198,8 +198,6 @@ open class GenericPos(private val reactContext: ReactApplicationContext): CardMa
     }
   }
 
-
-
   override suspend fun unsafeWaitForCard(promise: Promise) {
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
       waitForCard()

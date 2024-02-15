@@ -175,7 +175,7 @@ abstract class CardManager {
     promise.resolve(true)
   }
 
-  fun unsafeConnectSam() {
+  open fun unsafeConnectSam() {
     connectSam()
   }
 
@@ -183,23 +183,23 @@ abstract class CardManager {
     waitForCard()
   }
 
-  fun unsafeConnectCard() {
+  open fun unsafeConnectCard() {
     connectCard()
   }
 
-  fun unsafeRead(options: ReadableArray, promise: Promise) {
+  open fun unsafeRead(options: ReadableArray, promise: Promise) {
     read(options, promise)
   }
 
-  fun unsafeWrite(options: ReadableArray, promise: Promise) {
+  open fun unsafeWrite(options: ReadableArray, promise: Promise) {
     write(options, promise)
   }
 
-  fun unsafeDisconnectSam() {
+  open fun unsafeDisconnectSam() {
     disconnectSam()
   }
 
-  fun unsafeDisconnectCard() {
+  open fun unsafeDisconnectCard() {
     disconnectCard()
   }
 

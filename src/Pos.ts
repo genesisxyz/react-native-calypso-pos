@@ -164,7 +164,6 @@ export async function withBlock(block: () => Promise<void>) {
   } catch (error) {
     throw error;
   } finally {
-    console.log('DONE');
     Pos.unsafeDisconnectSam();
     Pos.unsafeDisconnectCard();
   }
