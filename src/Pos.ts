@@ -39,6 +39,9 @@ export enum ReadMode {
 export type PosError = {
   code: ErrorCode;
   message: string;
+  userInfo: {
+    isPosError: true;
+  };
 };
 
 export enum ErrorCode {
@@ -52,10 +55,13 @@ export enum ErrorCode {
   PendingRequest = 'PENDING_REQUEST',
   SamConnectFail = 'SAM_CONNECT_FAIL',
   SamDisconnectFail = 'SAM_DISCONNECT_FAIL',
+  NoSamAvailable = 'NO_SAM_AVAILABLE',
+  Cancel = 'CANCEL',
 }
 
 export function isPosError(obj: any): obj is PosError {
   return (
+    (obj as PosError).userInfo?.isPosError === true &&
     (obj as PosError).code !== undefined &&
     (obj as PosError).message !== undefined
   );
@@ -69,49 +75,8 @@ export function close() {
   return Pos.close();
 }
 
-export async function readCardId(): Promise<{ samId: string; cardId: string }> {
-  return await Pos.readCardId();
-}
-
-export async function readRecordsFromCard(
-  options: {
-    application: Uint8Array;
-    sfi: number;
-    offset: number;
-    readMode: ReadMode;
-  }[]
-): Promise<{
-  cardId: string;
-  samId: string | null;
-  data: {
-    sfi: number;
-    records: Record<number, number[]>;
-  }[];
-}> {
-  return await Pos.readRecordsFromCard(
-    options.map((e) => ({
-      ...e,
-      application: Array.from(e.application),
-    }))
-  );
-}
-
-export async function writeToCardUpdate(
-  options: {
-    apdu: Uint8Array;
-    application: Uint8Array;
-    sfi: number;
-    offset: number;
-    samUnlockString: string;
-  }[]
-): Promise<void> {
-  return await Pos.writeToCardUpdate(
-    options.map((e) => ({
-      ...e,
-      apdu: Array.from(e.apdu),
-      application: Array.from(e.application),
-    }))
-  );
+export async function getSamId(): Promise<{ samId: string | null }> {
+  return await Pos.getSamId();
 }
 
 export async function read(
@@ -121,14 +86,12 @@ export async function read(
     offset: number;
     readMode: ReadMode;
   }[]
-): Promise<{
-  cardId: string;
-  samId: string | null;
-  data: {
+): Promise<
+  {
     sfi: number;
     records: Record<number, number[]>;
-  }[];
-}> {
+  }[]
+> {
   return await Pos.unsafeRead(
     options.map((e) => ({
       ...e,
@@ -142,7 +105,7 @@ export async function write(
     apdu: Uint8Array;
     application: Uint8Array;
     sfi: number;
-    offset: number;
+    offset?: number;
     samUnlockString: string;
   }[]
 ): Promise<void> {
@@ -155,18 +118,33 @@ export async function write(
   );
 }
 
-export async function withBlock(block: () => Promise<void>) {
+export async function withBlock(
+  block: (info: { cardId: string }) => Promise<void>
+) {
   try {
-    Pos.unsafeConnectSam();
-    await Pos.unsafeWaitForCard();
-    Pos.unsafeConnectCard();
-    await block();
+    const { cardId } = (await Pos.unsafeWaitForCard()) as {
+      cardId: string;
+    };
+    await Pos.unsafeConnectCard();
+    await block({ cardId });
   } catch (error) {
     throw error;
   } finally {
-    Pos.unsafeDisconnectSam();
-    Pos.unsafeDisconnectCard();
+    await Pos.unsafeDisconnectCard();
   }
+}
+
+export async function samComputeEventLogSignature(options: {
+  samUnlockString: string;
+  kif: number;
+  kvc: number;
+  log: Uint8Array;
+}): Promise<Uint8Array> {
+  const response = await Pos.samComputeEventLogSignature({
+    ...options,
+    log: Array.from(options.log),
+  });
+  return new Uint8Array(response);
 }
 
 export function addCardStatusListener(

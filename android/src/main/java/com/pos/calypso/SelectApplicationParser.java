@@ -20,9 +20,6 @@ public class SelectApplicationParser extends AbstractCardResponseParser {
     private static final int TAG_APPLICATION_SERIAL_NUMBER = 0xC7;
     private static final int TAG_DISCRETIONARY_DATA = 0x53;
 
-    public static final int BIP_APPLICATION_TYPE = 0x23;
-    public static final int BIP_APPLICATION_SUBTYPE = 0xC0;
-
     /** attributes result of th FCI parsing */
     private boolean isDfInvalidated = false;
 
@@ -108,10 +105,5 @@ public class SelectApplicationParser extends AbstractCardResponseParser {
 
     public byte[] getApplicationSN() {
         return applicationSN;
-    }
-
-    public boolean isBipApplication() {
-        return applicationType == (byte)BIP_APPLICATION_TYPE &&
-                applicationSubtype == (byte)BIP_APPLICATION_SUBTYPE;
     }
 }

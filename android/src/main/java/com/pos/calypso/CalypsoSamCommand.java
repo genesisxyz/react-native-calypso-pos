@@ -5,6 +5,9 @@ enum CalypsoSamCommand implements CardCommand {
   /** select diversifier. */
   SELECT_DIVERSIFIER("Select Diversifier", (byte) 0x14),
 
+  /** select diversifier. */
+  COMPUTE_SIGNATURE("Compute Signature", (byte) 0x2A),
+
   /** get challenge. */
   GET_CHALLENGE("Get Challenge", (byte) 0x84),
 

@@ -2,6 +2,7 @@ package com.pos
 
 import android.graphics.BitmapFactory
 import android.util.Base64
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.telpo.tps550.api.TelpoException
@@ -17,11 +18,13 @@ class TelpoPrinter(reactApplicationContext: ReactApplicationContext): Printer() 
       } catch (e: Exception) {
         if (e is TelpoException) {
           val status = printer.checkStatus()
+          val userInfo = Arguments.createMap()
+          userInfo.putBoolean("isPrinterError", true)
           when (status) {
-            UsbThermalPrinter.STATUS_NO_PAPER, 16 -> promise.reject(PrinterException.NO_PAPER, "No paper")
-            UsbThermalPrinter.STATUS_OVER_HEAT -> promise.reject(PrinterException(PrinterException.OVERHEAT, "Overheating"))
-            UsbThermalPrinter.STATUS_OVER_FLOW -> promise.reject(PrinterException(PrinterException.OVERFLOW, "Overflow"))
-            else -> promise.reject(PrinterException(PrinterException.UNKNOWN, "Unknown"))
+            UsbThermalPrinter.STATUS_NO_PAPER, 16 -> promise.reject(PrinterException.NO_PAPER, "No paper", userInfo)
+            UsbThermalPrinter.STATUS_OVER_HEAT -> promise.reject(PrinterException.OVERHEAT, "Overheating", userInfo)
+            UsbThermalPrinter.STATUS_OVER_FLOW -> promise.reject(PrinterException.OVERFLOW, "Overflow", userInfo)
+            else -> promise.reject(PrinterException.UNKNOWN, "Unknown", userInfo)
           }
 
           return;

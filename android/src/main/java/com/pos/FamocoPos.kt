@@ -22,7 +22,7 @@ import kotlin.coroutines.resumeWithException
 
 
 class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager() {
-  private lateinit var samCard: Card
+  private var samCard: Card? = null
   private lateinit var rfCard: Card
 
   private val famocoSamLogicalID = 1
@@ -34,9 +34,11 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
       try {
         if (arg0.resultCode == OperationResult.SUCCESS) {
           samCard = (arg0 as SmartCardReaderOperationResult).card
-          val tempSamId = ByteConvertStringUtil.bytesToHexString(samCard.id)
+          val tempSamId = ByteConvertStringUtil.bytesToHexString(samCard!!.id)
           if (tempSamId != null) samId = tempSamId.substring(36, 47).replace("\\s+".toRegex(), "")
           cont.resume(Unit)
+        } else {
+          cont.resumeWithException(PosException(PosException.NO_SAM_AVAILABLE, "No SAM available"))
         }
       } catch (e: Throwable) {
         cont.resumeWithException(e)
@@ -70,7 +72,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
       closeSamReader()
     } catch (e: Throwable) {
       e.printStackTrace()
-      promise.resolve(false)
+      promise.resolve(true)
     }
   }
 
@@ -91,6 +93,8 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
         sendEvent(reactContext, "CardStatus", params)
 
         cont.resume(Unit)
+      } else if (operationResult.resultCode == OperationResult.CANCEL) {
+        throw PosException(PosException.CANCEL, "Cancel")
       } else {
         throw PosException(PosException.CARD_NOT_PRESENT, "Card not present")
       }
@@ -106,48 +110,11 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     }
   }
 
-  override suspend fun readCardId(promise: Promise) {
-    try {
-      openCardReader()
-      super.readCardId(promise)
-      closeCardReader()
-    } catch (e: Throwable) {
-      when (e) {
-        is PosException -> promise.reject(e.code, e.message)
-        else -> promise.reject(PosException.UNKNOWN, "Unknown")
-      }
-    }
-  }
-
-  override suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
-    try {
-      openCardReader()
-      super.readRecordsFromCard(options, promise)
-      closeCardReader()
-    } catch (e: Throwable) {
-      when (e) {
-        is PosException -> promise.reject(e.code, e.message)
-        else -> promise.reject(PosException.UNKNOWN, "Unknown")
-      }
-    }
-  }
-
-  override suspend fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
-    try {
-      openSamReader()
-      openCardReader()
-      super.writeToCardUpdate(options, promise)
-      closeCardReader()
-      closeSamReader()
-    } catch (e: Throwable) {
-      when (e) {
-        is PosException -> promise.reject(e.code, e.message)
-        else -> promise.reject(PosException.UNKNOWN, "Unknown")
-      }
-    }
-  }
-
   override fun connectSam() {
+    if (samCard === null) {
+      throw PosException(PosException.NO_SAM_AVAILABLE, "No SAM available")
+    }
+    openSamReader()
     if (samIsConnected) return
     samIsConnected = try {
       (samCard as CPUCard).connect()
@@ -164,7 +131,8 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
   override fun disconnectSam() {
     if (!samIsConnected) return
     samIsConnected = try {
-      (samCard as CPUCard).disconnect()
+      (samCard as CPUCard?)?.disconnect()
+      closeSamReader()
       false
     } catch (e: DeviceException) {
       e.printStackTrace()
@@ -299,7 +267,7 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
   private var samReaderIsConnected = false
   private var cardReaderIsConnected = false
 
-  override fun close() {
+  override suspend fun close() {
     try {
       closeCardReader()
     } catch (e: Exception) {
@@ -312,24 +280,36 @@ class FamocoPos(private val reactContext: ReactApplicationContext) : CardManager
     }
   }
 
-  override fun unsafeConnectSam() {
-    openSamReader()
-    super.unsafeConnectSam()
-  }
-
-  override fun unsafeDisconnectSam() {
-    super.unsafeDisconnectSam()
-    closeSamReader()
-  }
-
   override suspend fun unsafeWaitForCard(promise: Promise) {
-    openCardReader()
-    waitForCard()
-    promise.resolve(true)
+    try {
+      openCardReader()
+      waitForCard()
+
+      val response = Arguments.createMap()
+      response.putString("cardId", cardId)
+      promise.resolve(response)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 
-  override fun unsafeDisconnectCard() {
-    super.unsafeDisconnectCard()
-    closeCardReader()
+  override fun unsafeDisconnectCard(promise: Promise) {
+    try {
+      disconnectCard()
+      closeCardReader()
+      promise.resolve(true)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 }

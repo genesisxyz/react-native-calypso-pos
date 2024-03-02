@@ -121,15 +121,17 @@ export default function App() {
     }
     setIsLoadingCard(true);
     try {
-      await Pos.writeToCardUpdate([
-        {
-          apdu: EMPTY_DATA,
-          application: AID,
-          sfi: SFI,
-          offset: OFFSET,
-          samUnlockString: SAM_UNLOCK_STRING,
-        },
-      ]);
+      await Pos.withBlock(async () => {
+        await Pos.write([
+          {
+            apdu: EMPTY_DATA,
+            application: AID,
+            sfi: SFI,
+            offset: OFFSET,
+            samUnlockString: SAM_UNLOCK_STRING,
+          },
+        ]);
+      });
 
       console.warn(`Wrote ${RECORD_DATA} to file ${SFI} on offset ${OFFSET}`);
     } catch (e) {
@@ -141,8 +143,13 @@ export default function App() {
   const readId = async () => {
     setIsLoadingCard(true);
     try {
-      const cardId = await Pos.readCardId();
-      console.warn(cardId);
+      await Pos.withBlock(async ({ cardId }) => {
+        console.log(cardId);
+
+        const { samId } = await Pos.getSamId();
+
+        console.log(samId);
+      });
     } catch (e) {
       console.warn(e);
     }
@@ -152,16 +159,18 @@ export default function App() {
   const read = async () => {
     setIsLoadingCard(true);
     try {
-      const result = await Pos.readRecordsFromCard([
-        {
-          application: AID,
-          sfi: SFI,
-          offset: 1,
-          readMode: Pos.ReadMode.OneRecord,
-        },
-      ]);
+      await Pos.withBlock(async () => {
+        const result = await Pos.read([
+          {
+            application: AID,
+            sfi: SFI,
+            offset: 1,
+            readMode: Pos.ReadMode.OneRecord,
+          },
+        ]);
 
-      console.log(JSON.stringify(result));
+        console.log(JSON.stringify(result));
+      });
     } catch (e) {
       console.warn(e);
     }
@@ -180,7 +189,7 @@ export default function App() {
             readMode: Pos.ReadMode.OneRecord,
           },
         ]);
-        console.log('Old record:', JSON.stringify(record.data));
+        console.log('Old record:', JSON.stringify(record));
         await Pos.write([
           {
             apdu: RECORD_DATA,
@@ -198,7 +207,7 @@ export default function App() {
             readMode: Pos.ReadMode.OneRecord,
           },
         ]);
-        console.log('New record:', JSON.stringify(record.data));
+        console.log('New record:', JSON.stringify(record));
       });
     } catch (e) {
       console.warn(e);
@@ -259,6 +268,41 @@ export default function App() {
         ) : (
           <Text style={styles.text}>Read/Write test</Text>
         )}
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        disabled={isLoadingCard}
+        onPress={async () => {
+          setIsLoadingCard(true);
+          try {
+            await Pos.withBlock(async () => {
+              const mac = await Pos.samComputeEventLogSignature({
+                samUnlockString: SAM_UNLOCK_STRING,
+                kif: 0x2b,
+                kvc: 0x6c,
+                log: new Uint8Array(Array(27).fill(0x0)),
+              });
+              console.warn('MAC:', mac);
+            });
+          } catch (e) {
+            console.warn(e);
+          }
+          setIsLoadingCard(false);
+        }}
+      >
+        {isLoadingCard ? (
+          <ActivityIndicator />
+        ) : (
+          <Text style={styles.text}>Compute log signature</Text>
+        )}
+      </Pressable>
+      <Pressable
+        style={styles.button}
+        onPress={() => {
+          Pos.close();
+        }}
+      >
+        <Text style={styles.text}>Close</Text>
       </Pressable>
     </View>
   );

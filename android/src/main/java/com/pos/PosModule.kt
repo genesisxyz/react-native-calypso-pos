@@ -47,36 +47,20 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
   @ReactMethod
   fun close() {
     if (isArm) {
-      device?.close()
+      GlobalScope.launch {
+        device?.close()
+      }
     }
   }
 
   @ReactMethod
-  fun readCardId(promise: Promise) {
-    GlobalScope.launch {
-      device?.readCardId(promise)
-    }
+  fun getSamId(promise: Promise) {
+    device?.getSamId(promise)
   }
 
   @ReactMethod
-  @OptIn(DelicateCoroutinesApi::class)
-  fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
-    GlobalScope.launch {
-      device?.writeToCardUpdate(options, promise)
-    }
-  }
-
-  @ReactMethod
-  @OptIn(DelicateCoroutinesApi::class)
-  fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
-    GlobalScope.launch {
-      device?.readRecordsFromCard(options, promise)
-    }
-  }
-
-  @ReactMethod
-  fun unsafeConnectSam() {
-    device?.unsafeConnectSam()
+  fun samComputeEventLogSignature(options: ReadableMap, promise: Promise) {
+    device?.samComputeEventLogSignature(options, promise)
   }
 
   @ReactMethod
@@ -88,8 +72,8 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
   }
 
   @ReactMethod
-    fun unsafeConnectCard() {
-    device?.unsafeConnectCard()
+    fun unsafeConnectCard(promise: Promise) {
+    device?.unsafeConnectCard(promise)
   }
 
   @ReactMethod
@@ -103,13 +87,8 @@ class PosModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaMod
   }
 
   @ReactMethod
-  fun unsafeDisconnectSam() {
-    device?.unsafeDisconnectSam()
-  }
-
-  @ReactMethod
-  fun unsafeDisconnectCard() {
-    device?.unsafeDisconnectCard()
+  fun unsafeDisconnectCard(promise: Promise) {
+    device?.unsafeDisconnectCard(promise)
   }
 
   companion object {

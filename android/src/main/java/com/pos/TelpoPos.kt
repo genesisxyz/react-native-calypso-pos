@@ -7,10 +7,10 @@ import kotlinx.coroutines.*
 class TelpoPos(private val reactContext: ReactApplicationContext) : GenericPos(reactContext) {
 
   private lateinit var samReader: SmartCardReader
+  private var samReaderIsInitialized = false
 
-  override suspend fun init(promise: Promise) {
-    if (posIsInitialized) {
-      promise.resolve(true)
+  private fun initializeSamReader() {
+    if (samReaderIsInitialized) {
       return
     }
 
@@ -18,10 +18,9 @@ class TelpoPos(private val reactContext: ReactApplicationContext) : GenericPos(r
     try {
       samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM1)
       connectSam()
-      posIsInitialized = true
-      promise.resolve(true)
+      samReaderIsInitialized = true
       disconnectSam()
-      return;
+      return
     } catch (_: Throwable) {
 
     }
@@ -30,26 +29,47 @@ class TelpoPos(private val reactContext: ReactApplicationContext) : GenericPos(r
     try {
       samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM2)
       connectSam()
-      posIsInitialized = true
-      promise.resolve(true)
+      samReaderIsInitialized = true
+      disconnectSam()
+      return
+    } catch (e: Throwable) {
+
+    }
+
+    // try on SAM slot 3
+    try {
+      samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM3)
+      connectSam()
+      samReaderIsInitialized = true
+      disconnectSam()
+      return
+    } catch (e: Throwable) {
+
+    }
+
+    // try on SAM slot 4
+    try {
+      samReader = SmartCardReader(reactContext, SmartCardReader.SLOT_PSAM4)
+      connectSam()
+      samReaderIsInitialized = true
       disconnectSam()
     } catch (e: Throwable) {
-      when (e) {
-        is PosException -> promise.reject(e.code, e.message)
-        else -> promise.resolve(false)
-      }
-    }
-  }
-
-  override suspend fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
-    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-      super.writeToCardUpdate(options, promise)
+      throw PosException(PosException.NO_SAM_AVAILABLE, "No SAM available")
     }
   }
 
   override fun transmitToSam(apdu: ByteArray): ByteArray? {
     return try {
       val response = samReader.transmit(apdu)
+      if (response.size == 2 && response[0] == 0x61.toByte()) {
+        val sizeResponseToRequest = response[1]
+
+        val getResponseCommandBytes = byteArrayOf(0x80.toByte(), 0xC0.toByte(), 0x00, 0x00,
+          sizeResponseToRequest)
+
+        val newResult = samReader.transmit(getResponseCommandBytes)
+        return newResult
+      }
       response
     } catch (e: NullPointerException) {
       null
@@ -76,5 +96,26 @@ class TelpoPos(private val reactContext: ReactApplicationContext) : GenericPos(r
     samReader.iccPowerOff()
     samReader.close()
     samIsConnected = false
+  }
+
+  override fun write(options: ReadableArray, promise: Promise) {
+    initializeSamReader()
+    super.write(options, promise)
+  }
+
+  override fun getSamId(promise: Promise) {
+    try {
+      initializeSamReader()
+      super.getSamId(promise)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    } finally {
+      disconnectSam()
+    }
   }
 }

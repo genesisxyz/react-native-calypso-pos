@@ -5,10 +5,12 @@ import com.facebook.react.modules.core.DeviceEventManagerModule
 import com.pos.byteUtils.ByteConvertReactNativeUtil
 import com.pos.byteUtils.ByteConvertStringUtil
 import com.pos.calypso.*
+import okhttp3.internal.toHexString
 
 
 abstract class CardManager {
-  protected lateinit var samId: String
+  // TODO: should samId be nullable?
+  protected var samId: String? = null
   protected lateinit var cardId: String
 
   protected var samIsConnected = false
@@ -16,7 +18,7 @@ abstract class CardManager {
 
   abstract suspend fun init(promise: Promise)
 
-  abstract fun close()
+  abstract suspend fun close()
 
   protected abstract fun transmitToSam(apdu: ByteArray): ByteArray?
 
@@ -50,60 +52,61 @@ abstract class CardManager {
     return readRecordsParser
   }
 
-  open suspend fun readCardId(promise: Promise) {
-    try {
-      waitForCard()
-      connectCard()
-      if (cardIsConnected) {
-        val map = Arguments.createMap()
-        map.putString("samId", samId)
-        map.putString("cardId", cardId)
-        promise.resolve(map)
-      } else {
-        promise.reject(PosException(PosException.CARD_NOT_CONNECTED, "Card not connected"))
-      }
-    } catch (e: Throwable) {
-      promise.reject(PosException(PosException.CARD_NOT_PRESENT, "Card not present"))
-    } finally {
-      disconnectCard()
-    }
-  }
-
-  open suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
-    try {
-      waitForCard()
-      connectCard()
-
-      read(options, promise)
-    } catch (e: Throwable) {
-      e.printStackTrace()
-      promise.reject(
-        when (e) {
-          is PosException -> e
-          is CardCommandException -> PosException(PosException.TRANSMIT_APDU_COMMAND, "Command status failed")
-          else -> PosException(PosException.CARD_NOT_PRESENT, "Card not present")
-        }
-      )
-    } finally {
-      disconnectCard()
-    }
-  }
-
-  open suspend fun writeToCardUpdate(options: ReadableArray, promise: Promise) {
+  open fun getSamId(promise: Promise) {
     try {
       connectSam()
-      waitForCard()
-      connectCard()
 
-      write(options, promise)
+      val response = Arguments.createMap()
+      response.putString("samId", samId)
+      promise.resolve(response)
     } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
       when (e) {
-        is PosException -> promise.reject(e.code, e.message)
-        else -> promise.reject(PosException.UNKNOWN, "Unknown")
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
       }
     } finally {
       disconnectSam()
-      disconnectCard()
+    }
+  }
+
+  open fun samComputeEventLogSignature(options: ReadableMap, promise: Promise) {
+    val userInfo = Arguments.createMap()
+    userInfo.putBoolean("isPosError", true)
+
+    if (!samIsConnected) {
+      promise.reject(PosException.NO_SAM_AVAILABLE, "No SAM available", userInfo)
+      return
+    }
+
+    try {
+      val kif = options.getInt("kif").toByte()
+      val kvc = options.getInt("kvc").toByte()
+      val log = ByteConvertReactNativeUtil.arrayListToByteArray(options.getArray("log")!!.toArrayList() as ArrayList<Int>)
+      val samUnlockString = options.getString("samUnlockString")!!
+
+      unlockSam(samUnlockString)
+
+      val cardSerialNumber = ByteConvertStringUtil.stringToByteArray("00000000${cardId.toLong().toHexString()}")
+
+      val samComputeLogSignatureBuilder = SamComputeLogSignatureBuilder(kif,
+        kvc, cardSerialNumber, log)
+      val samComputeLogSignatureResponseAdapter = ApduResponseAdapter(
+        transmitToSam(samComputeLogSignatureBuilder.apdu))
+      val samComputeLogSignatureParser = samComputeLogSignatureBuilder.createResponseParser(
+        samComputeLogSignatureResponseAdapter)
+
+      samComputeLogSignatureParser.checkStatus()
+
+      promise.resolve(ByteConvertReactNativeUtil.byteArrayToReadableArray(samComputeLogSignatureParser.signature))
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
     }
   }
 
@@ -111,9 +114,6 @@ abstract class CardManager {
 
   protected fun read(options: ReadableArray, promise: Promise) {
     val readableArray = Arguments.createArray()
-    val readableMap =  Arguments.createMap()
-    readableMap.putString("cardId", cardId)
-    readableMap.putString("samId", samId)
 
     options.toArrayList().forEach {
       it as HashMap<*, *>
@@ -145,17 +145,18 @@ abstract class CardManager {
       readableArray.pushMap(resultMap)
     }
 
-    readableMap.putArray("data", readableArray)
-    promise.resolve(readableMap)
+    promise.resolve(readableArray)
   }
 
-  protected fun write(options: ReadableArray, promise: Promise) {
+  protected open fun write(options: ReadableArray, promise: Promise) {
+    connectSam()
+
     options.toArrayList().forEach {
       it as HashMap<*, *>
       val apdu = it["apdu"] as ArrayList<Int>
       val application = it["application"] as ArrayList<Int>
       val sfi = (it["sfi"] as Double).toInt()
-      val offset = (it["offset"] as Double).toInt()
+      val offset = (it["offset"] as Double?)?.toInt()
       val samUnlockString = it["samUnlockString"] as String
 
       val newRecord = apdu.map { it.toByte() }.toByteArray();
@@ -164,7 +165,7 @@ abstract class CardManager {
       unlockSam(samUnlockString)
       selectSamDiversifier(selectApplicationParser)
       val samChallengeParser = samChallenge()
-      val openSession3Parser = openSession3(samChallengeParser, sfi, offset)
+      val openSession3Parser = openSession3(samChallengeParser, sfi, if (offset !== null) offset else 1)
       samDigestInit(openSession3Parser)
       updateRecord(sfi, offset, newRecord)
       val samDigestCloseParser = samDigestClose()
@@ -172,35 +173,79 @@ abstract class CardManager {
       samDigestAuthenticate(closeSession3Parser)
     }
 
+    disconnectSam()
+
     promise.resolve(true)
   }
 
-  open fun unsafeConnectSam() {
-    connectSam()
-  }
-
   open suspend fun unsafeWaitForCard(promise: Promise) {
-    waitForCard()
+    try {
+      waitForCard()
+      val response = Arguments.createMap()
+      response.putString("cardId", cardId)
+      promise.resolve(response)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 
-  open fun unsafeConnectCard() {
-    connectCard()
+  open fun unsafeConnectCard(promise: Promise) {
+    try {
+      connectCard()
+      promise.resolve(true)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 
   open fun unsafeRead(options: ReadableArray, promise: Promise) {
-    read(options, promise)
+    try {
+      read(options, promise)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 
   open fun unsafeWrite(options: ReadableArray, promise: Promise) {
-    write(options, promise)
+    try {
+      write(options, promise)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 
-  open fun unsafeDisconnectSam() {
-    disconnectSam()
-  }
-
-  open fun unsafeDisconnectCard() {
-    disconnectCard()
+  open fun unsafeDisconnectCard(promise: Promise) {
+    try {
+      disconnectCard()
+      promise.resolve(true)
+    } catch (e: Exception) {
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      when (e) {
+        is PosException -> promise.reject(e.code, e.message, userInfo)
+        else -> promise.reject(PosException.UNKNOWN, "Unknown", userInfo)
+      }
+    }
   }
 
   // endregion
@@ -310,39 +355,74 @@ abstract class CardManager {
     samDigestInitParser.checkStatus()
   }
 
-  private fun updateRecord(sfi: Int, offset: Int, record: ByteArray) {
-    val cardUpdateRecordBuilder = CardUpdateRecordBuilder(sfi.toByte(), offset, record)
+  // TODO: needs refactoring
+  private fun updateRecord(sfi: Int, offset: Int?, record: ByteArray) {
+    if (offset == null) {
+      val cardAppendRecordBuilder = CardAppendRecordBuilder(sfi.toByte(), record)
 
-    val cardUpdateAdapter = ApduResponseAdapter(
-      transmitToCard(cardUpdateRecordBuilder.apdu))
+      val cardUpdateAdapter = ApduResponseAdapter(
+        transmitToCard(cardAppendRecordBuilder.apdu))
 
-    val cardUpdateRecordParser = cardUpdateRecordBuilder
-      .createResponseParser(cardUpdateAdapter)
+      val cardUpdateRecordParser = cardAppendRecordBuilder
+        .createResponseParser(cardUpdateAdapter)
 
-    cardUpdateRecordParser.checkStatus()
+      cardUpdateRecordParser.checkStatus()
+      val samDigestUpdateCardWriteRequestBuilder = SamDigestUpdateBuilder(false,
+        cardAppendRecordBuilder.apdu)
 
-    val samDigestUpdateCardWriteRequestBuilder = SamDigestUpdateBuilder(false,
-      cardUpdateRecordBuilder.apdu)
+      val samDigestUpdateCardWriteRequestResponseAdapter = ApduResponseAdapter(
+        transmitToSam(samDigestUpdateCardWriteRequestBuilder.apdu))
 
-    val samDigestUpdateCardWriteRequestResponseAdapter = ApduResponseAdapter(
-      transmitToSam(samDigestUpdateCardWriteRequestBuilder.apdu))
+      val samDigestUpdateCardWriteRequestParser = samDigestUpdateCardWriteRequestBuilder.createResponseParser(
+        samDigestUpdateCardWriteRequestResponseAdapter)
 
-    val samDigestUpdateCardWriteRequestParser = samDigestUpdateCardWriteRequestBuilder.createResponseParser(
-      samDigestUpdateCardWriteRequestResponseAdapter)
+      samDigestUpdateCardWriteRequestParser.checkStatus()
 
-    samDigestUpdateCardWriteRequestParser.checkStatus()
+      val samDigestUpdateCardWriteResponseBuilder = SamDigestUpdateBuilder(false,
+        cardUpdateRecordParser.response.apdu)
 
-    val samDigestUpdateCardWriteResponseBuilder = SamDigestUpdateBuilder(false,
-      cardUpdateRecordParser.response.apdu)
+      val samDigestUpdateCardWriteResponseResponseAdapter = ApduResponseAdapter(transmitToSam(
+        samDigestUpdateCardWriteResponseBuilder.apdu
+      ))
 
-    val samDigestUpdateCardWriteResponseResponseAdapter = ApduResponseAdapter(transmitToSam(
-      samDigestUpdateCardWriteResponseBuilder.apdu
-    ))
+      val samDigestUpdateCardWriteResponseParser = samDigestUpdateCardWriteResponseBuilder.createResponseParser(
+        samDigestUpdateCardWriteResponseResponseAdapter)
 
-    val samDigestUpdateCardWriteResponseParser = samDigestUpdateCardWriteResponseBuilder.createResponseParser(
-      samDigestUpdateCardWriteResponseResponseAdapter)
+      samDigestUpdateCardWriteResponseParser.checkStatus()
+    } else {
+      val cardUpdateRecordBuilder = CardUpdateRecordBuilder(sfi.toByte(), offset, record)
 
-    samDigestUpdateCardWriteResponseParser.checkStatus()
+      val cardUpdateAdapter = ApduResponseAdapter(
+        transmitToCard(cardUpdateRecordBuilder.apdu))
+
+      val cardUpdateRecordParser = cardUpdateRecordBuilder
+        .createResponseParser(cardUpdateAdapter)
+
+      cardUpdateRecordParser.checkStatus()
+
+      val samDigestUpdateCardWriteRequestBuilder = SamDigestUpdateBuilder(false,
+        cardUpdateRecordBuilder.apdu)
+
+      val samDigestUpdateCardWriteRequestResponseAdapter = ApduResponseAdapter(
+        transmitToSam(samDigestUpdateCardWriteRequestBuilder.apdu))
+
+      val samDigestUpdateCardWriteRequestParser = samDigestUpdateCardWriteRequestBuilder.createResponseParser(
+        samDigestUpdateCardWriteRequestResponseAdapter)
+
+      samDigestUpdateCardWriteRequestParser.checkStatus()
+
+      val samDigestUpdateCardWriteResponseBuilder = SamDigestUpdateBuilder(false,
+        cardUpdateRecordParser.response.apdu)
+
+      val samDigestUpdateCardWriteResponseResponseAdapter = ApduResponseAdapter(transmitToSam(
+        samDigestUpdateCardWriteResponseBuilder.apdu
+      ))
+
+      val samDigestUpdateCardWriteResponseParser = samDigestUpdateCardWriteResponseBuilder.createResponseParser(
+        samDigestUpdateCardWriteResponseResponseAdapter)
+
+      samDigestUpdateCardWriteResponseParser.checkStatus()
+    }
   }
 
   private fun samDigestClose(): SamDigestCloseParser {

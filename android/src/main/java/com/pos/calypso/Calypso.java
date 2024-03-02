@@ -24,7 +24,6 @@ public class Calypso {
     public static final int CARD_EMISSION_TIME_LENGTH_IN_BYTES = 3;
 
     public static final byte CARD_DATA_FORMAT = 0x05;
-    public static final byte CARD_BIP_CIRCUIT = (byte)0xC0;
 
     public static final byte[] AID = new byte[] { 0x31, 0x54, 0x49, 0x43, 0x2E, 0x49, 0x43, 0x41,
             (byte)0xD3, (byte)0x80, 0x12, 0x00, (byte)0x91, 0x01 };

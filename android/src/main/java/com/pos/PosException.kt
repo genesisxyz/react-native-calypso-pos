@@ -17,5 +17,7 @@ class PosException(val code: String, override val message: String) : Exception(m
     val PENDING_REQUEST = "PENDING_REQUEST"
     val SAM_CONNECT_FAIL = "SAM_CONNECT_FAIL"
     val SAM_DISCONNECT_FAIL = "SAM_DISCONNECT_FAIL"
+    val NO_SAM_AVAILABLE = "NO_SAM_AVAILABLE"
+    val CANCEL = "CANCEL"
   }
 }

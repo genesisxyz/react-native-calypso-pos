@@ -39,8 +39,8 @@ open class GenericPos(private val reactContext: ReactApplicationContext): CardMa
             job = null
           }
         } else {
-          // TODO: to be tested
-          job?.cancel("error", PosException(PosException.CARD_NOT_PRESENT, "Card not present"))
+          job?.cancel()
+          job = null
         }
       }
     }
@@ -98,17 +98,24 @@ open class GenericPos(private val reactContext: ReactApplicationContext): CardMa
       promise.resolve(true)
       return
     }
-
-    samId = ""
     posIsInitialized = true
     promise.resolve(true)
   }
 
   protected var job: Job? = null
 
-  override fun close() {
+  protected var promise: Promise? = null
+
+  override suspend fun close() {
     try {
-      job?.cancel("close", PosException(PosException.PENDING_REQUEST, "Pending request"))
+      job?.cancel()
+      job = null
+
+      val userInfo = Arguments.createMap()
+      userInfo.putBoolean("isPosError", true)
+      promise?.reject(PosException.CANCEL, "Cancel", userInfo)
+
+      promise = null
       disconnectCard()
       disconnectSam()
     } catch (e: Exception) {
@@ -186,22 +193,15 @@ open class GenericPos(private val reactContext: ReactApplicationContext): CardMa
 
   }
 
-  override suspend fun readRecordsFromCard(options: ReadableArray, promise: Promise) {
-    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-      super.readRecordsFromCard(options, promise)
-    }
-  }
-
-  override suspend fun readCardId(promise: Promise) {
-    job = GlobalScope.launch(start = CoroutineStart.LAZY) {
-      super.readCardId(promise)
-    }
-  }
-
   override suspend fun unsafeWaitForCard(promise: Promise) {
+    this.promise = promise
     job = GlobalScope.launch(start = CoroutineStart.LAZY) {
+      this@GenericPos.promise = null
       waitForCard()
-      promise.resolve(true)
+
+      val response = Arguments.createMap()
+      response.putString("cardId", cardId)
+      promise.resolve(response)
     }
   }
 }
