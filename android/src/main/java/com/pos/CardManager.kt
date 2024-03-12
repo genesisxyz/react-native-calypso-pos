@@ -75,12 +75,9 @@ abstract class CardManager {
     val userInfo = Arguments.createMap()
     userInfo.putBoolean("isPosError", true)
 
-    if (!samIsConnected) {
-      promise.reject(PosException.NO_SAM_AVAILABLE, "No SAM available", userInfo)
-      return
-    }
-
     try {
+      connectSam()
+
       val kif = options.getInt("kif").toByte()
       val kvc = options.getInt("kvc").toByte()
       val log = ByteConvertReactNativeUtil.arrayListToByteArray(options.getArray("log")!!.toArrayList() as ArrayList<Int>)
@@ -100,6 +97,8 @@ abstract class CardManager {
       samComputeLogSignatureParser.checkStatus()
 
       promise.resolve(ByteConvertReactNativeUtil.byteArrayToReadableArray(samComputeLogSignatureParser.signature))
+
+      disconnectSam()
     } catch (e: Exception) {
       val userInfo = Arguments.createMap()
       userInfo.putBoolean("isPosError", true)
