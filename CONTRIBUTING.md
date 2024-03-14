@@ -53,10 +53,9 @@ Remember to add tests for your change if possible. Run the unit tests by:
 yarn test
 ```
 
-To edit the Objective-C or Swift files, open `example/ios/PosExample.xcworkspace` in XCode and find the source files at `Pods > Development Pods > react-native-pos`.
+To edit the Objective-C or Swift files, open `example/ios/PosExample.xcworkspace` in XCode and find the source files at `Pods > Development Pods > react-native-calypso-pos`.
 
-To edit the Java or Kotlin files, open `example/android` in Android studio and find the source files at `react-native-pos` under `Android`.
-
+To edit the Java or Kotlin files, open `example/android` in Android studio and find the source files at `react-native-calypso-pos` under `Android`.
 
 ### Commit message convention
 

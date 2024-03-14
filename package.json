@@ -1,5 +1,5 @@
 {
-  "name": "react-native-pos",
+  "name": "react-native-calypso-pos",
   "version": "0.1.0",
   "description": "test",
   "main": "lib/commonjs/index",
@@ -41,13 +41,13 @@
     "ios",
     "android"
   ],
-  "repository": "https://github.com/genesisxyz/react-native-pos",
+  "repository": "https://github.com/genesisxyz/react-native-calypso-pos",
   "author": "Damiano Collu <colludamiano7@gmail.com> (https://github.com/genesisxyz)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/genesisxyz/react-native-pos/issues"
+    "url": "https://github.com/genesisxyz/react-native-calypso-pos/issues"
   },
-  "homepage": "https://github.com/genesisxyz/react-native-pos#readme",
+  "homepage": "https://github.com/genesisxyz/react-native-calypso-pos#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },

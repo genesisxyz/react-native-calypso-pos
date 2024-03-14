@@ -1,6 +1,6 @@
 //
 //  PrintAction.swift
-//  react-native-pos
+//  react-native-calypso-pos
 //
 //  Created by Damiano Collu on 23/01/24.
 //

@@ -302,7 +302,7 @@ PODS:
   - React-jsinspector (0.70.10)
   - React-logger (0.70.10):
     - glog
-  - react-native-pos (0.1.0):
+  - react-native-calypso-pos (0.1.0):
     - React-Core
   - React-perflogger (0.70.10)
   - React-RCTActionSheet (0.70.10):
@@ -422,7 +422,7 @@ DEPENDENCIES:
   - React-jsiexecutor (from `../node_modules/react-native/ReactCommon/jsiexecutor`)
   - React-jsinspector (from `../node_modules/react-native/ReactCommon/jsinspector`)
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
-  - react-native-pos (from `../..`)
+  - react-native-calypso-pos (from `../..`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
   - React-RCTActionSheet (from `../node_modules/react-native/Libraries/ActionSheetIOS`)
   - React-RCTAnimation (from `../node_modules/react-native/Libraries/NativeAnimation`)
@@ -498,7 +498,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/jsinspector"
   React-logger:
     :path: "../node_modules/react-native/ReactCommon/logger"
-  react-native-pos:
+  react-native-calypso-pos:
     :path: "../.."
   React-perflogger:
     :path: "../node_modules/react-native/ReactCommon/reactperflogger"
@@ -562,7 +562,7 @@ SPEC CHECKSUMS:
   React-jsiexecutor: 1457c7bb2f08f257e6b5ece8b62348da43c4ccf2
   React-jsinspector: 2a1985769123b199c195a96f46478b35db139712
   React-logger: 7fbdc3576b2ed3834360c8ea3c1c2ec54ac3043a
-  react-native-pos: d7a8c50af911cc0497c5e310e1a6d92773277cc0
+  react-native-calypso-pos: d7a8c50af911cc0497c5e310e1a6d92773277cc0
   React-perflogger: f86e85eb59151d09e9b44b8931f5c088e4f08bbc
   React-RCTActionSheet: cd3d76501a6069e164986b93f144be34b593955c
   React-RCTAnimation: 2d09db635202e5d6f66de596f5a6b38389fe76ec

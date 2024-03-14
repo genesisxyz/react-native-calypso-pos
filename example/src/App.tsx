@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { Printer, Pos } from 'react-native-pos';
+import { Printer, Pos } from 'react-native-calypso-pos';
 
 const SAM_UNLOCK_STRING = '';
 const AID: Uint8Array = new Uint8Array(); // byteArrayFromHex('');

@@ -1,4 +1,4 @@
-// FILEPATH: /Users/genesisxyz/dev/react-native/react-native-pos/src/Pos.test.ts
+// FILEPATH: /Users/genesisxyz/dev/react-native/react-native-calypso-pos/src/Pos.test.ts
 import { ErrorCode } from '../Pos';
 
 jest.mock('react-native', () => {
